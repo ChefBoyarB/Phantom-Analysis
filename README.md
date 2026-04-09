@@ -28,6 +28,17 @@ Examples include:
 - profile-fit comparison figures
 - pump on vs pump off comparisons
 
+See:
+
+- [Comparison_Analysis/README.md](./Comparison_Analysis/README.md)
+
+That README explains:
+
+- the config-driven profile-fit comparison workflow
+- how to compare multiple samples per tracer
+- which comparison config file to edit
+- which CSV/statistics outputs are written
+
 ### `Table_Generation/`
 Contains scripts that generate support tables and manuscript-style outputs from completed analysis results.
 
@@ -60,10 +71,12 @@ For new dataset analysis work:
 1. Use the config-first analysis workflow in `Data_Analysis/`
 2. Create or copy a config in `configs/analysis/`
 3. Run the analysis using `Analysis_Main_Config_First.py`
-4. Use `Comparison_Analysis/` and `Table_Generation/` after the per-dataset analysis outputs are generated
+4. Create or update a comparison config in `configs/comparison/` when you want to compare multiple analyzed runs
+5. Use `Comparison_Analysis/` and `Table_Generation/` after the per-dataset analysis outputs are generated
 
 ## Notes
 
 - `Analysis_Main_Engine.py` is now the shared analysis engine behind the config-first and legacy launchers.
 - `configs/analysis/` holds reusable dataset/run settings for the config-first workflow.
+- `configs/comparison/` holds reusable settings for comparison workflows such as multi-sample profile-fit comparisons.
 - Generated output folders are not the same thing as source code; keep code changes and result folders conceptually separate when using Git.
