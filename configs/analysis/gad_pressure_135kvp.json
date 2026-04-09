@@ -1,7 +1,7 @@
 {
   "config_name": "gad_pressure_135kvp",
-  "description": "Current GAD pressure-run settings migrated from Analysis_Main_Branch.py.",
-  "notes": "Copy this file, rename it for a new dataset, then update only the values that change for that run.",
+  "description": "GAD pump-on pressure dataset using Darcy convection, ROI 'GAD_Darcy_Fixed_V', and the GAD 135 kVp calibration.",
+  "notes": "This is the config-first version of the validated GAD pressure workflow. Before reusing it for a new run, change at least output_folder and any dataset-specific paths or ROI values that need to differ.",
   "settings": {
     "dicom_folder": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/GAD_1_5.5P_2/GAD_1_5.5P_2",
     "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Testing_Debug_Results\\GAD_Config_Pressure_Test",

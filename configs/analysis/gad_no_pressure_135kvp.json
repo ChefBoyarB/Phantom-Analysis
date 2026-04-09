@@ -1,7 +1,7 @@
 {
   "config_name": "gad_no_pressure_135kvp",
-  "description": "Recovered from the older GAD no-pressure analysis run metadata in Results_Paper_1.",
-  "notes": "This mirrors the previous successful no-pressure GAD run, including the saved ROI and calibration values.",
+  "description": "GAD pump-off / diffusion-only dataset recovered from the earlier Results_Paper_1 no-pressure run, with ROI 'GAD' and the GAD 135 kVp calibration.",
+  "notes": "This mirrors the older validated no-pressure GAD run. Reuse it by copying the file, renaming it, and then updating output_folder, dicom_folder, and any run-specific ROI or fit settings that change.",
   "settings": {
     "dicom_folder": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/Data RAW/GAD_1_0P_2_Swollen/GAD_1_0P_2",
     "output_folder": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/Results/Results_Paper_1/GAD_Swollen_No_Pressure_135kvp",
