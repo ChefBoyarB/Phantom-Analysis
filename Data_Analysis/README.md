@@ -120,6 +120,22 @@ Use this rule:
 
 That keeps dataset-specific settings separate from method changes.
 
+## ROI Guidance
+
+Try to keep ROI selection as consistent as possible within the same tracer or experiment group.
+
+Use this rule:
+
+- keep one default ROI size for each tracer or tracer-condition group when possible
+- prefer shifting the ROI to match the same physical gel region rather than resizing it
+- only resize when needed to exclude artifacts, ruptures, missing gel, or edge problems
+- if resizing is necessary, make the smallest change that solves the problem
+- document meaningful ROI deviations in the config `description` or `notes`
+
+For example, for your VIS workflow, a reasonable template is to keep the same VIS ROI size across comparable datasets and allow small vertical or lateral shifts when gel height or alignment changes between runs.
+
+The goal is not to force identical coordinates in every dataset. The goal is to keep the ROI as similar as possible in physical meaning while still excluding clearly invalid regions.
+
 ## Output Checking
 
 When a run finishes, the most useful files for checking whether two runs match are:
