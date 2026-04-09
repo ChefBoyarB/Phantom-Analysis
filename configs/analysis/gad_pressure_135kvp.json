@@ -4,7 +4,7 @@
   "notes": "Copy this file, rename it for a new dataset, then update only the values that change for that run.",
   "settings": {
     "dicom_folder": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/GAD_1_5.5P_2/GAD_1_5.5P_2",
-    "output_folder": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/Results/Testing/GAD_Pressure_Test_Global_Shared_V_CODEX",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Testing_Debug_Results\\GAD_Config_Pressure_Test",
     "pump_on": true,
     "fit_velocity": false,
     "convection_method": "darcy",

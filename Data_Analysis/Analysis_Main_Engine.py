@@ -41,7 +41,7 @@ def format_roi_display_name(roi_name: str) -> str:
 # with: python Data_Analysis/Analysis_Main_Config_First.py --config path/to/config.json
 
 DICOM_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\VS Code Files\GAD_1_5.5P_2\GAD_1_5.5P_2"
-OUTPUT_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\VS Code Files\Results\Testing\GAD_Pressure_Test_Global_Shared_V_CODEX" # make sure to change this for each run to avoid overwriting previous outputs
+OUTPUT_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\Python files\Paper_1_Results\Testing_Debug_Results\GAD_Legacy_Test" # make sure to change this for each run to avoid overwriting previous outputs
 
 # ------------------------------------------------------------
 # Analysis mode

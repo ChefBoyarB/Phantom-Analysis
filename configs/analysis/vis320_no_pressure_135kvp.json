@@ -4,10 +4,10 @@
   "notes": "This mirrors the previous successful no-pressure VIS 320 run, including the saved ROI and VIS-specific calibration values.",
   "settings": {
     "dicom_folder": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/Data RAW/VIS320_1_0P_10_Swollen_Main",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Phantom_Analysis_Codes\\Testing\\Vis320_test",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Testing_Debug_Results\\VIS320_Config_Test",
     "pump_on": false,
     "fit_velocity": false,
-    "convection_method": "none",
+    "convection_method": "none", 
     "use_first_timepoint_as_baseline": false,
     "manual_baseline_hu": null,
     "hu_per_conc": 16.189,
