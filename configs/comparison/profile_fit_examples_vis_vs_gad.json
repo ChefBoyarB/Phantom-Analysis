@@ -21,6 +21,13 @@
     "fitted_profile_auc_concentration_x_mm",
     "peak_fitted_concentration"
   ],
+  "report_windows": [
+    {
+      "name": "post_5min",
+      "min_time_min": 5.0,
+      "max_time_min": null
+    }
+  ],
   "tracers": [
     {
       "name": "VIS320",

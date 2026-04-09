@@ -49,6 +49,7 @@ Important top-level fields:
 - `out_folder`
 - `figure_title`
 - `target_times_min`
+- `report_windows`
 - `stats_alpha`
 - `stats_metrics`
 - `tracers`
@@ -76,6 +77,45 @@ If needed, a sample can also override:
 
 Use `run_rel` when the sample folder is under a shared `results_source`.
 Use `run_path` when you want to point directly to an output folder somewhere else.
+
+### Late-time windows
+
+Use `report_windows` when you want summary outputs for windows like post-5-min.
+
+Example:
+
+```json
+"report_windows": [
+  {
+    "name": "post_5min",
+    "min_time_min": 5.0,
+    "max_time_min": null
+  }
+]
+```
+
+This writes both generic window summary CSVs and window-specific files such as `post_5min_...csv`.
+
+## Uncertainty Definitions
+
+For profile uncertainty outputs, the script now follows the same split used by `Analysis_Main_Engine.py`.
+
+### Combined uncertainty includes:
+
+- ROI sensitivity uncertainty
+- model-fit uncertainty
+- calibration uncertainty
+- HU-noise uncertainty
+
+### Fixed-ROI uncertainty includes:
+
+- model-fit uncertainty
+- calibration uncertainty
+- HU-noise uncertainty
+
+Fixed-ROI uncertainty does **not** include ROI sensitivity uncertainty.
+
+The audit JSON records these definitions and whether the comparison script used engine-written uncertainty CSVs or recomputed the same definitions from the component maps.
 
 ## Adding More Samples
 
@@ -115,9 +155,21 @@ The script writes figure outputs under:
 It also writes summary tables under:
 
 - `profile_fit_examples/summaries/per_sample_target_time_metrics.csv`
+- `profile_fit_examples/summaries/per_sample_all_time_metrics.csv`
 - `profile_fit_examples/summaries/tracer_group_metric_summary.csv`
 - `profile_fit_examples/summaries/pairwise_significance_tests.csv`
 - `profile_fit_examples/summaries/omnibus_significance_tests.csv`
+- `profile_fit_examples/summaries/window_per_sample_metric_summary.csv`
+- `profile_fit_examples/summaries/window_tracer_group_metric_summary.csv`
+- `profile_fit_examples/summaries/window_pairwise_significance_tests.csv`
+- `profile_fit_examples/summaries/window_omnibus_significance_tests.csv`
+
+If you define a window named `post_5min`, it also writes:
+
+- `profile_fit_examples/summaries/post_5min_per_sample_metric_summary.csv`
+- `profile_fit_examples/summaries/post_5min_tracer_group_metric_summary.csv`
+- `profile_fit_examples/summaries/post_5min_pairwise_significance_tests.csv`
+- `profile_fit_examples/summaries/post_5min_omnibus_significance_tests.csv`
 
 And it writes an audit trail under:
 

@@ -84,6 +84,14 @@ METRIC_LABELS = {
     "surface_measured_concentration": "Measured Surface Concentration (mg/mL)",
     "surface_fitted_concentration": "Fitted Surface Concentration (mg/mL)",
     "penetration_depth_fit_10pct_peak_mm": "Penetration Depth at 10% Fit Peak (mm)",
+    "model_fit_profile_std_depth_mean": "Model-Fit Profile SD, Depth Mean",
+    "hu_noise_profile_std_depth_mean": "HU-Noise Profile SD, Depth Mean",
+    "calibration_profile_std_depth_mean": "Calibration Profile SD, Depth Mean",
+    "roi_sensitivity_profile_std_depth_mean": "ROI-Sensitivity Profile SD, Depth Mean",
+    "fixed_roi_profile_std_depth_mean": "Fixed-ROI Profile SD, Depth Mean",
+    "combined_profile_std_depth_mean": "Combined Profile SD, Depth Mean",
+    "fixed_roi_profile_ci_width_depth_mean": "Fixed-ROI Profile 95% CI Width, Depth Mean",
+    "combined_profile_ci_width_depth_mean": "Combined Profile 95% CI Width, Depth Mean",
 }
 
 DEFAULT_STATS_METRICS = [
@@ -93,6 +101,25 @@ DEFAULT_STATS_METRICS = [
     "fitted_profile_auc_concentration_x_mm",
     "peak_fitted_concentration",
 ]
+
+DEFAULT_REPORT_WINDOWS = [
+    {
+        "name": "post_5min",
+        "min_time_min": 5.0,
+        "max_time_min": None,
+    }
+]
+
+TIMEPOINT_METADATA_COLUMNS = {
+    "tracer_name",
+    "tracer_label",
+    "sample_id",
+    "actual_time_min",
+    "run_display",
+    "roi_folder",
+    "dx_mm",
+    "depth_points",
+}
 
 
 @dataclass
@@ -114,14 +141,18 @@ class SampleData:
     r2: Optional[np.ndarray]
     fit_std: Optional[np.ndarray]
     hu_std: Optional[np.ndarray]
+    roi_sensitivity_std: Optional[np.ndarray]
     calib_std: Optional[np.ndarray]
     combined_std: Optional[np.ndarray]
     combined_ci_low: Optional[np.ndarray]
     combined_ci_high: Optional[np.ndarray]
     roi_fixed_std: Optional[np.ndarray]
+    roi_fixed_ci_low: Optional[np.ndarray]
+    roi_fixed_ci_high: Optional[np.ndarray]
     depth: np.ndarray
     valid_rows: np.ndarray
     metric_series: Dict[str, Optional[np.ndarray]]
+    uncertainty_audit: Dict[str, Any]
 
 
 def _is_zip_path(path: str) -> bool:
@@ -233,6 +264,35 @@ def build_roi_fixed_std(
     return np.sqrt(np.sum([part ** 2 for part in parts], axis=0))
 
 
+def combine_uncertainty_terms(*arrays: Optional[np.ndarray]) -> Optional[np.ndarray]:
+    parts = []
+    for arr in arrays:
+        if arr is not None:
+            parts.append(np.nan_to_num(np.asarray(arr, dtype=float), nan=0.0, posinf=0.0, neginf=0.0))
+    if not parts:
+        return None
+    return np.sqrt(np.sum([part ** 2 for part in parts], axis=0))
+
+
+def approx_ci_from_std(center: Optional[np.ndarray], std_values: Optional[np.ndarray], z: float = Z95) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    if center is None or std_values is None:
+        return None, None
+    center = np.asarray(center, dtype=float)
+    std_values = np.asarray(std_values, dtype=float)
+    return center - z * std_values, center + z * std_values
+
+
+def arrays_match(left: Optional[np.ndarray], right: Optional[np.ndarray], atol: float = 1e-10, rtol: float = 1e-6) -> Optional[bool]:
+    if left is None or right is None:
+        return None
+    left_arr = np.asarray(left, dtype=float)
+    right_arr = np.asarray(right, dtype=float)
+    finite_mask = np.isfinite(left_arr) & np.isfinite(right_arr)
+    if not np.any(finite_mask):
+        return None
+    return bool(np.allclose(left_arr[finite_mask], right_arr[finite_mask], atol=atol, rtol=rtol))
+
+
 def compute_axis_limits(*arrays: np.ndarray) -> tuple[tuple[float, float], float]:
     valid_parts = []
     for arr in arrays:
@@ -277,6 +337,9 @@ def build_profile_rel_paths(run_rel: str, roi_folder: str) -> Dict[str, str]:
         "hu_noise_std_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_hu_noise_std_depth_vs_time.csv",
         "roi_sensitivity_std_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_roi_sensitivity_std_depth_vs_time.csv",
         "calibration_std_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_calibration_std_depth_vs_time.csv",
+        "fixed_roi_std_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_fixed_roi_std_depth_vs_time.csv",
+        "fixed_roi_ci_low_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_fixed_roi_ci_low_depth_vs_time.csv",
+        "fixed_roi_ci_high_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_fixed_roi_ci_high_depth_vs_time.csv",
         "combined_std_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_combined_std_depth_vs_time.csv",
         "combined_ci_low_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_combined_ci_low_depth_vs_time.csv",
         "combined_ci_high_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_combined_ci_high_depth_vs_time.csv",
@@ -296,6 +359,9 @@ def build_profile_abs_paths(run_path: str, roi_folder: str) -> Dict[str, str]:
         "hu_noise_std_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_hu_noise_std_depth_vs_time.csv"),
         "roi_sensitivity_std_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_roi_sensitivity_std_depth_vs_time.csv"),
         "calibration_std_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_calibration_std_depth_vs_time.csv"),
+        "fixed_roi_std_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_fixed_roi_std_depth_vs_time.csv"),
+        "fixed_roi_ci_low_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_fixed_roi_ci_low_depth_vs_time.csv"),
+        "fixed_roi_ci_high_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_fixed_roi_ci_high_depth_vs_time.csv"),
         "combined_std_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_combined_std_depth_vs_time.csv"),
         "combined_ci_low_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_combined_ci_low_depth_vs_time.csv"),
         "combined_ci_high_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_combined_ci_high_depth_vs_time.csv"),
@@ -613,6 +679,16 @@ def safe_first(values: np.ndarray) -> float:
     return float(finite[0])
 
 
+def nanmean_1d(values: Optional[np.ndarray]) -> float:
+    if values is None:
+        return float("nan")
+    arr = np.asarray(values, dtype=float)
+    finite = arr[np.isfinite(arr)]
+    if finite.size == 0:
+        return float("nan")
+    return float(np.mean(finite))
+
+
 def penetration_depth(depth: np.ndarray, values: np.ndarray, threshold_fraction: float = 0.10) -> float:
     depth = np.asarray(depth, dtype=float)
     values = np.asarray(values, dtype=float)
@@ -630,16 +706,21 @@ def penetration_depth(depth: np.ndarray, values: np.ndarray, threshold_fraction:
     return float(np.max(passing))
 
 
-def compute_sample_metric_row(sample: SampleData, target_time: float, matched_index: int) -> Dict[str, Any]:
+def compute_profile_metric_fields(sample: SampleData, matched_index: int) -> Dict[str, Any]:
     measured_row = sample.measured[matched_index]
     fitted_row = sample.fitted[matched_index]
+    fixed_roi_ci_width = None
+    combined_ci_width = None
+    if sample.roi_fixed_ci_low is not None and sample.roi_fixed_ci_high is not None:
+        fixed_roi_ci_width = sample.roi_fixed_ci_high[matched_index] - sample.roi_fixed_ci_low[matched_index]
+    if sample.combined_ci_low is not None and sample.combined_ci_high is not None:
+        combined_ci_width = sample.combined_ci_high[matched_index] - sample.combined_ci_low[matched_index]
+
     row = {
         "tracer_name": sample.tracer_name,
         "tracer_label": sample.tracer_label,
         "sample_id": sample.sample_id,
-        "target_time_min": float(target_time),
         "actual_time_min": float(sample.times[matched_index]),
-        "time_offset_min": float(sample.times[matched_index] - target_time),
         "run_display": sample.run_display,
         "roi_folder": sample.roi_folder,
         "dx_mm": float(sample.dx_mm),
@@ -651,9 +732,24 @@ def compute_sample_metric_row(sample: SampleData, target_time: float, matched_in
         "surface_measured_concentration": safe_first(measured_row),
         "surface_fitted_concentration": safe_first(fitted_row),
         "penetration_depth_fit_10pct_peak_mm": penetration_depth(sample.depth, fitted_row, threshold_fraction=0.10),
+        "model_fit_profile_std_depth_mean": nanmean_1d(sample.fit_std[matched_index]) if sample.fit_std is not None else float("nan"),
+        "hu_noise_profile_std_depth_mean": nanmean_1d(sample.hu_std[matched_index]) if sample.hu_std is not None else float("nan"),
+        "calibration_profile_std_depth_mean": nanmean_1d(sample.calib_std[matched_index]) if sample.calib_std is not None else float("nan"),
+        "roi_sensitivity_profile_std_depth_mean": nanmean_1d(sample.roi_sensitivity_std[matched_index]) if sample.roi_sensitivity_std is not None else float("nan"),
+        "fixed_roi_profile_std_depth_mean": nanmean_1d(sample.roi_fixed_std[matched_index]) if sample.roi_fixed_std is not None else float("nan"),
+        "combined_profile_std_depth_mean": nanmean_1d(sample.combined_std[matched_index]) if sample.combined_std is not None else float("nan"),
+        "fixed_roi_profile_ci_width_depth_mean": nanmean_1d(fixed_roi_ci_width),
+        "combined_profile_ci_width_depth_mean": nanmean_1d(combined_ci_width),
     }
     for metric_name in METRIC_COLUMN_CANDIDATES:
         row[metric_name] = value_at_index(sample.metric_series.get(metric_name), matched_index)
+    return row
+
+
+def compute_sample_metric_row(sample: SampleData, target_time: float, matched_index: int) -> Dict[str, Any]:
+    row = compute_profile_metric_fields(sample, matched_index)
+    row["target_time_min"] = float(target_time)
+    row["time_offset_min"] = float(sample.times[matched_index] - target_time)
     return row
 
 
@@ -805,6 +901,276 @@ def build_statistics_tables(
     return pd.DataFrame(pairwise_rows), pd.DataFrame(omnibus_rows)
 
 
+def infer_summary_metrics(df: pd.DataFrame) -> List[str]:
+    metrics = []
+    for column in df.columns:
+        if column in TIMEPOINT_METADATA_COLUMNS or column == "target_time_min" or column == "time_offset_min":
+            continue
+        series = pd.to_numeric(df[column], errors="coerce")
+        if series.notna().any():
+            metrics.append(column)
+    return metrics
+
+
+def finite_stats(values: Sequence[float]) -> Dict[str, float]:
+    arr = pd.to_numeric(pd.Series(values), errors="coerce").dropna().to_numpy(dtype=float)
+    if arr.size == 0:
+        return {
+            "n": 0,
+            "mean": float("nan"),
+            "std": float("nan"),
+            "sem": float("nan"),
+            "median": float("nan"),
+            "iqr": float("nan"),
+            "min": float("nan"),
+            "max": float("nan"),
+        }
+    std_value = float(np.std(arr, ddof=1)) if arr.size > 1 else float("nan")
+    sem_value = float(std_value / np.sqrt(arr.size)) if arr.size > 1 else float("nan")
+    q75, q25 = np.percentile(arr, [75, 25]) if arr.size else (float("nan"), float("nan"))
+    return {
+        "n": int(arr.size),
+        "mean": float(np.mean(arr)),
+        "std": std_value,
+        "sem": sem_value,
+        "median": float(np.median(arr)),
+        "iqr": float(q75 - q25),
+        "min": float(np.min(arr)),
+        "max": float(np.max(arr)),
+    }
+
+
+def build_window_sample_summary(
+    all_time_metrics_df: pd.DataFrame,
+    report_windows: Sequence[Dict[str, Any]],
+    summary_metrics: Sequence[str],
+) -> pd.DataFrame:
+    rows: List[Dict[str, Any]] = []
+    for window in report_windows:
+        window_name = str(window["name"])
+        min_time = float(window["min_time_min"]) if window.get("min_time_min") is not None else None
+        max_time = float(window["max_time_min"]) if window.get("max_time_min") is not None else None
+        window_df = all_time_metrics_df.copy()
+        if min_time is not None:
+            window_df = window_df[window_df["actual_time_min"] >= min_time]
+        if max_time is not None:
+            window_df = window_df[window_df["actual_time_min"] <= max_time]
+
+        for (tracer_name, tracer_label, sample_id), sample_df in window_df.groupby(["tracer_name", "tracer_label", "sample_id"]):
+            run_display = sample_df["run_display"].iloc[0]
+            roi_folder = sample_df["roi_folder"].iloc[0]
+            for metric in summary_metrics:
+                if metric not in sample_df.columns:
+                    continue
+                stats_map = finite_stats(sample_df[metric])
+                rows.append(
+                    {
+                        "window_name": window_name,
+                        "window_min_time_min": min_time,
+                        "window_max_time_min": max_time,
+                        "tracer_name": tracer_name,
+                        "tracer_label": tracer_label,
+                        "sample_id": sample_id,
+                        "run_display": run_display,
+                        "roi_folder": roi_folder,
+                        "metric_name": metric,
+                        "metric_label": METRIC_LABELS.get(metric, metric),
+                        "timepoint_count": int(stats_map["n"]),
+                        "mean": stats_map["mean"],
+                        "std": stats_map["std"],
+                        "median": stats_map["median"],
+                        "iqr": stats_map["iqr"],
+                        "min": stats_map["min"],
+                        "max": stats_map["max"],
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def build_window_group_summary(window_sample_summary_df: pd.DataFrame) -> pd.DataFrame:
+    output_columns = [
+        "window_name",
+        "window_min_time_min",
+        "window_max_time_min",
+        "metric_name",
+        "metric_label",
+        "tracer_name",
+        "tracer_label",
+        "n_samples",
+        "mean_of_sample_means",
+        "std_of_sample_means",
+        "sem_of_sample_means",
+        "median_of_sample_means",
+        "iqr_of_sample_means",
+        "min_of_sample_means",
+        "max_of_sample_means",
+    ]
+    rows: List[Dict[str, Any]] = []
+    group_cols = ["window_name", "window_min_time_min", "window_max_time_min", "metric_name", "metric_label", "tracer_name", "tracer_label"]
+    for group_values, group_df in window_sample_summary_df.groupby(group_cols, dropna=False):
+        stats_map = finite_stats(group_df["mean"])
+        row = dict(zip(group_cols, group_values))
+        row.update(
+            {
+                "n_samples": stats_map["n"],
+                "mean_of_sample_means": stats_map["mean"],
+                "std_of_sample_means": stats_map["std"],
+                "sem_of_sample_means": stats_map["sem"],
+                "median_of_sample_means": stats_map["median"],
+                "iqr_of_sample_means": stats_map["iqr"],
+                "min_of_sample_means": stats_map["min"],
+                "max_of_sample_means": stats_map["max"],
+            }
+        )
+        rows.append(row)
+    return pd.DataFrame(rows, columns=output_columns)
+
+
+def build_window_statistics_tables(
+    window_sample_summary_df: pd.DataFrame,
+    metrics: Sequence[str],
+    alpha: float,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    pairwise_columns = [
+        "window_name",
+        "window_min_time_min",
+        "window_max_time_min",
+        "metric_name",
+        "metric_label",
+        "test_name",
+        "tracer_a",
+        "tracer_a_label",
+        "tracer_b",
+        "tracer_b_label",
+        "n_a",
+        "n_b",
+        "mean_a",
+        "mean_b",
+        "mean_diff_a_minus_b",
+        "statistic",
+        "p_value_raw",
+        "p_value_holm",
+        "alpha",
+        "significant",
+        "note",
+    ]
+    omnibus_columns = [
+        "window_name",
+        "window_min_time_min",
+        "window_max_time_min",
+        "metric_name",
+        "metric_label",
+        "test_name",
+        "group_count",
+        "statistic",
+        "p_value",
+        "alpha",
+        "significant",
+        "note",
+    ]
+    pairwise_rows: List[Dict[str, Any]] = []
+    omnibus_rows: List[Dict[str, Any]] = []
+    group_keys = ["window_name", "window_min_time_min", "window_max_time_min", "metric_name", "metric_label"]
+
+    for group_values, metric_df in window_sample_summary_df.groupby(group_keys, dropna=False):
+        window_name, window_min_time_min, window_max_time_min, metric_name, metric_label = group_values
+        if metric_name not in metrics:
+            continue
+        tracer_groups: Dict[str, np.ndarray] = {}
+        tracer_labels: Dict[str, str] = {}
+        for tracer_name, tracer_df in metric_df.groupby("tracer_name"):
+            values = pd.to_numeric(tracer_df["mean"], errors="coerce").dropna().to_numpy(dtype=float)
+            if values.size:
+                tracer_groups[tracer_name] = values
+                tracer_labels[tracer_name] = tracer_df["tracer_label"].iloc[0]
+
+        if len(tracer_groups) >= 3:
+            eligible_groups = [values for values in tracer_groups.values() if values.size >= 2]
+            if len(eligible_groups) >= 3:
+                statistic, p_value = stats.f_oneway(*eligible_groups)
+                omnibus_rows.append(
+                    {
+                        "window_name": window_name,
+                        "window_min_time_min": window_min_time_min,
+                        "window_max_time_min": window_max_time_min,
+                        "metric_name": metric_name,
+                        "metric_label": metric_label,
+                        "test_name": "one_way_anova",
+                        "group_count": int(len(eligible_groups)),
+                        "statistic": float(statistic),
+                        "p_value": float(p_value),
+                        "alpha": float(alpha),
+                        "significant": bool(np.isfinite(p_value) and p_value < alpha),
+                        "note": "",
+                    }
+                )
+            else:
+                omnibus_rows.append(
+                    {
+                        "window_name": window_name,
+                        "window_min_time_min": window_min_time_min,
+                        "window_max_time_min": window_max_time_min,
+                        "metric_name": metric_name,
+                        "metric_label": metric_label,
+                        "test_name": "one_way_anova",
+                        "group_count": int(len(tracer_groups)),
+                        "statistic": float("nan"),
+                        "p_value": float("nan"),
+                        "alpha": float(alpha),
+                        "significant": False,
+                        "note": "Need at least 3 tracer groups with n>=2 for ANOVA.",
+                    }
+                )
+
+        raw_p_values = []
+        raw_row_indices = []
+        for tracer_a, tracer_b in combinations(sorted(tracer_groups.keys()), 2):
+            values_a = tracer_groups[tracer_a]
+            values_b = tracer_groups[tracer_b]
+            note = ""
+            statistic = float("nan")
+            p_value = float("nan")
+            if values_a.size >= 2 and values_b.size >= 2:
+                statistic, p_value = stats.ttest_ind(values_a, values_b, equal_var=False, nan_policy="omit")
+                raw_p_values.append(float(p_value))
+                raw_row_indices.append(len(pairwise_rows))
+            else:
+                note = "Need n>=2 in each tracer group for Welch t-test."
+            pairwise_rows.append(
+                {
+                    "window_name": window_name,
+                    "window_min_time_min": window_min_time_min,
+                    "window_max_time_min": window_max_time_min,
+                    "metric_name": metric_name,
+                    "metric_label": metric_label,
+                    "test_name": "welch_ttest",
+                    "tracer_a": tracer_a,
+                    "tracer_a_label": tracer_labels[tracer_a],
+                    "tracer_b": tracer_b,
+                    "tracer_b_label": tracer_labels[tracer_b],
+                    "n_a": int(values_a.size),
+                    "n_b": int(values_b.size),
+                    "mean_a": float(np.mean(values_a)) if values_a.size else float("nan"),
+                    "mean_b": float(np.mean(values_b)) if values_b.size else float("nan"),
+                    "mean_diff_a_minus_b": float(np.mean(values_a) - np.mean(values_b)) if values_a.size and values_b.size else float("nan"),
+                    "statistic": float(statistic) if np.isfinite(statistic) else float("nan"),
+                    "p_value_raw": float(p_value) if np.isfinite(p_value) else float("nan"),
+                    "p_value_holm": float("nan"),
+                    "alpha": float(alpha),
+                    "significant": False,
+                    "note": note,
+                }
+            )
+
+        if raw_p_values:
+            adjusted = holm_adjust(raw_p_values)
+            for row_idx, adjusted_p in zip(raw_row_indices, adjusted):
+                pairwise_rows[row_idx]["p_value_holm"] = float(adjusted_p)
+                pairwise_rows[row_idx]["significant"] = bool(np.isfinite(adjusted_p) and adjusted_p < alpha)
+
+    return pd.DataFrame(pairwise_rows, columns=pairwise_columns), pd.DataFrame(omnibus_rows, columns=omnibus_columns)
+
+
 def load_config(config_path: Path) -> Dict[str, Any]:
     with open(config_path, "r", encoding="utf-8-sig") as handle:
         config = json.load(handle)
@@ -825,7 +1191,9 @@ def validate_and_resolve_config(config: Dict[str, Any], config_path: Path) -> Di
     resolved["concentration_label"] = config.get("concentration_label", CONCENTRATION_LABEL_DEFAULT)
     resolved["target_times_min"] = config.get("target_times_min")
     resolved["stats_metrics"] = config.get("stats_metrics", DEFAULT_STATS_METRICS)
+    resolved["window_stats_metrics"] = config.get("window_stats_metrics")
     resolved["stats_alpha"] = float(config.get("stats_alpha", 0.05))
+    resolved["report_windows"] = config.get("report_windows", DEFAULT_REPORT_WINDOWS)
 
     tracers_resolved = []
     for tracer_index, tracer_cfg in enumerate(config["tracers"]):
@@ -893,18 +1261,62 @@ def load_sample_data(tracer_cfg: Dict[str, Any], sample_cfg: Dict[str, Any], res
 
     fit_std_df = loader_optional(paths_used["fit_std_csv"])
     hu_std_df = loader_optional(paths_used["hu_noise_std_csv"])
+    roi_sensitivity_std_df = loader_optional(paths_used["roi_sensitivity_std_csv"])
     calib_std_df = loader_optional(paths_used["calibration_std_csv"])
+    fixed_roi_std_df = loader_optional(paths_used["fixed_roi_std_csv"])
+    fixed_roi_ci_low_df = loader_optional(paths_used["fixed_roi_ci_low_csv"])
+    fixed_roi_ci_high_df = loader_optional(paths_used["fixed_roi_ci_high_csv"])
     combined_std_df = loader_optional(paths_used["combined_std_csv"])
     combined_ci_low_df = loader_optional(paths_used["combined_ci_low_csv"])
     combined_ci_high_df = loader_optional(paths_used["combined_ci_high_csv"])
 
     fit_std = to_numeric_2d(fit_std_df) if fit_std_df is not None else None
     hu_std = to_numeric_2d(hu_std_df) if hu_std_df is not None else None
+    roi_sensitivity_std = to_numeric_2d(roi_sensitivity_std_df) if roi_sensitivity_std_df is not None else None
     calib_std = to_numeric_2d(calib_std_df) if calib_std_df is not None else None
-    combined_std = to_numeric_2d(combined_std_df) if combined_std_df is not None else None
+    fixed_roi_std_from_engine = to_numeric_2d(fixed_roi_std_df) if fixed_roi_std_df is not None else None
+    fixed_roi_ci_low = to_numeric_2d(fixed_roi_ci_low_df) if fixed_roi_ci_low_df is not None else None
+    fixed_roi_ci_high = to_numeric_2d(fixed_roi_ci_high_df) if fixed_roi_ci_high_df is not None else None
+    combined_std_from_engine = to_numeric_2d(combined_std_df) if combined_std_df is not None else None
     combined_ci_low = to_numeric_2d(combined_ci_low_df) if combined_ci_low_df is not None else None
     combined_ci_high = to_numeric_2d(combined_ci_high_df) if combined_ci_high_df is not None else None
-    roi_fixed_std = build_roi_fixed_std(fit_std, hu_std, calib_std)
+
+    fixed_roi_std_from_components = combine_uncertainty_terms(fit_std, hu_std, calib_std)
+    combined_std_from_components = combine_uncertainty_terms(fit_std, hu_std, roi_sensitivity_std, calib_std)
+
+    roi_fixed_std = fixed_roi_std_from_engine if fixed_roi_std_from_engine is not None else fixed_roi_std_from_components
+    combined_std = combined_std_from_engine if combined_std_from_engine is not None else combined_std_from_components
+
+    if fixed_roi_ci_low is None or fixed_roi_ci_high is None:
+        fixed_roi_ci_low, fixed_roi_ci_high = approx_ci_from_std(fitted, roi_fixed_std)
+    if combined_ci_low is None or combined_ci_high is None:
+        combined_ci_low, combined_ci_high = approx_ci_from_std(fitted, combined_std)
+
+    uncertainty_audit = {
+        "fixed_roi_definition": [
+            "model_fit_uncertainty",
+            "hu_noise_uncertainty",
+            "calibration_uncertainty",
+        ],
+        "combined_definition": [
+            "model_fit_uncertainty",
+            "hu_noise_uncertainty",
+            "roi_sensitivity_uncertainty",
+            "calibration_uncertainty",
+        ],
+        "has_fit_std": fit_std is not None,
+        "has_hu_noise_std": hu_std is not None,
+        "has_roi_sensitivity_std": roi_sensitivity_std is not None,
+        "has_calibration_std": calib_std is not None,
+        "has_fixed_roi_std_from_engine": fixed_roi_std_from_engine is not None,
+        "has_combined_std_from_engine": combined_std_from_engine is not None,
+        "fixed_roi_component_match_engine": arrays_match(fixed_roi_std_from_engine, fixed_roi_std_from_components),
+        "combined_component_match_engine": arrays_match(combined_std_from_engine, combined_std_from_components),
+        "fixed_roi_std_source": "engine_csv" if fixed_roi_std_from_engine is not None else "recomputed_from_components",
+        "combined_std_source": "engine_csv" if combined_std_from_engine is not None else "recomputed_from_components",
+        "fixed_roi_ci_source": "engine_csv" if fixed_roi_ci_low_df is not None and fixed_roi_ci_high_df is not None else "approximated_from_std",
+        "combined_ci_source": "engine_csv" if combined_ci_low_df is not None and combined_ci_high_df is not None else "approximated_from_std",
+    }
 
     time_col = find_time_column(params_df)
     times = pd.to_numeric(params_df[time_col], errors="coerce").to_numpy(dtype=float)
@@ -943,14 +1355,18 @@ def load_sample_data(tracer_cfg: Dict[str, Any], sample_cfg: Dict[str, Any], res
         r2=r2,
         fit_std=fit_std,
         hu_std=hu_std,
+        roi_sensitivity_std=roi_sensitivity_std,
         calib_std=calib_std,
         combined_std=combined_std,
         combined_ci_low=combined_ci_low,
         combined_ci_high=combined_ci_high,
         roi_fixed_std=roi_fixed_std,
+        roi_fixed_ci_low=fixed_roi_ci_low,
+        roi_fixed_ci_high=fixed_roi_ci_high,
         depth=build_depth_mm(measured.shape[1], float(dx_value)),
         valid_rows=valid_rows,
         metric_series=metric_series,
+        uncertainty_audit=uncertainty_audit,
     )
 
 
@@ -960,6 +1376,7 @@ def write_tables(
     group_summary_df: pd.DataFrame,
     pairwise_df: pd.DataFrame,
     omnibus_df: pd.DataFrame,
+    extra_tables: Optional[Dict[str, pd.DataFrame]] = None,
 ) -> List[str]:
     summary_dir = Path(out_folder) / "profile_fit_examples" / "summaries"
     summary_dir.mkdir(parents=True, exist_ok=True)
@@ -980,6 +1397,12 @@ def write_tables(
     omnibus_path = summary_dir / "omnibus_significance_tests.csv"
     omnibus_df.to_csv(omnibus_path, index=False)
     outputs.append(str(omnibus_path))
+
+    if extra_tables:
+        for filename, df in extra_tables.items():
+            out_path = summary_dir / filename
+            df.to_csv(out_path, index=False)
+            outputs.append(str(out_path))
     return outputs
 
 
@@ -1062,10 +1485,58 @@ def main() -> int:
             metric_rows.append(compute_sample_metric_row(sample, target_time, matched_indices[sample.sample_id][target_time]))
     metrics_df = pd.DataFrame(metric_rows)
 
+    all_time_metric_rows = []
+    for sample in all_samples:
+        valid_indices = np.where(sample.valid_rows & np.isfinite(sample.times))[0]
+        for idx in valid_indices:
+            all_time_metric_rows.append(compute_profile_metric_fields(sample, int(idx)))
+    all_time_metrics_df = pd.DataFrame(all_time_metric_rows)
+
+    summary_metrics = infer_summary_metrics(metrics_df)
     stats_metrics = [metric for metric in config["stats_metrics"] if metric in metrics_df.columns]
-    group_summary_df = build_group_summary(metrics_df, stats_metrics)
+    group_summary_df = build_group_summary(metrics_df, summary_metrics)
     pairwise_df, omnibus_df = build_statistics_tables(metrics_df, stats_metrics, alpha=config["stats_alpha"])
-    table_outputs = write_tables(config["out_folder"], metrics_df, group_summary_df, pairwise_df, omnibus_df)
+
+    extra_tables: Dict[str, pd.DataFrame] = {
+        "per_sample_all_time_metrics.csv": all_time_metrics_df,
+    }
+
+    window_summary_metrics = infer_summary_metrics(all_time_metrics_df)
+    window_stats_metrics_config = config.get("window_stats_metrics")
+    window_stats_metrics = (
+        [metric for metric in window_stats_metrics_config if metric in all_time_metrics_df.columns]
+        if window_stats_metrics_config
+        else window_summary_metrics
+    )
+    window_sample_summary_df = build_window_sample_summary(all_time_metrics_df, config["report_windows"], window_summary_metrics)
+    if not window_sample_summary_df.empty:
+        window_group_summary_df = build_window_group_summary(window_sample_summary_df)
+        window_pairwise_df, window_omnibus_df = build_window_statistics_tables(
+            window_sample_summary_df,
+            window_stats_metrics,
+            alpha=config["stats_alpha"],
+        )
+        extra_tables["window_per_sample_metric_summary.csv"] = window_sample_summary_df
+        extra_tables["window_tracer_group_metric_summary.csv"] = window_group_summary_df
+        extra_tables["window_pairwise_significance_tests.csv"] = window_pairwise_df
+        extra_tables["window_omnibus_significance_tests.csv"] = window_omnibus_df
+
+        for window_name in sorted(window_sample_summary_df["window_name"].dropna().unique()):
+            safe_name = str(window_name).strip().replace(" ", "_")
+            extra_tables[f"{safe_name}_per_sample_metric_summary.csv"] = window_sample_summary_df[
+                window_sample_summary_df["window_name"] == window_name
+            ].copy()
+            extra_tables[f"{safe_name}_tracer_group_metric_summary.csv"] = window_group_summary_df[
+                window_group_summary_df["window_name"] == window_name
+            ].copy()
+            extra_tables[f"{safe_name}_pairwise_significance_tests.csv"] = window_pairwise_df[
+                window_pairwise_df["window_name"] == window_name
+            ].copy()
+            extra_tables[f"{safe_name}_omnibus_significance_tests.csv"] = window_omnibus_df[
+                window_omnibus_df["window_name"] == window_name
+            ].copy()
+
+    table_outputs = write_tables(config["out_folder"], metrics_df, group_summary_df, pairwise_df, omnibus_df, extra_tables=extra_tables)
 
     audit_payload = {
         "config_path": str(config_path),
@@ -1074,11 +1545,27 @@ def main() -> int:
         "figure_title": config["figure_title"],
         "target_times_requested_min": config.get("target_times_min"),
         "target_times_used_min": [float(x) for x in target_times],
+        "report_windows": config["report_windows"],
+        "summary_metrics": summary_metrics,
         "stats_metrics": stats_metrics,
+        "window_stats_metrics": window_stats_metrics,
         "stats_alpha": float(config["stats_alpha"]),
         "ylims_used": [float(ylims[0]), float(ylims[1])],
         "tracer_count": len(samples_by_tracer),
         "sample_count": len(all_samples),
+        "uncertainty_definitions": {
+            "fixed_roi": [
+                "model_fit_uncertainty",
+                "hu_noise_uncertainty",
+                "calibration_uncertainty",
+            ],
+            "combined": [
+                "model_fit_uncertainty",
+                "hu_noise_uncertainty",
+                "roi_sensitivity_uncertainty",
+                "calibration_uncertainty",
+            ],
+        },
         "tracers": {
             tracer_name: {
                 "label": samples_by_tracer[tracer_name][0].tracer_label,
@@ -1096,6 +1583,10 @@ def main() -> int:
                 }
                 for target_time in target_times
             }
+            for sample in all_samples
+        },
+        "sample_uncertainty_audit": {
+            sample.sample_id: sample.uncertainty_audit
             for sample in all_samples
         },
         "figure_outputs": figure_outputs,
