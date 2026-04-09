@@ -20,6 +20,11 @@ from scipy.stats import norm
 import pydicom
 
 
+# Shared analysis engine.
+# Recommended entry points:
+# - Analysis_Main_Config_First.py for normal config-driven runs
+# - Analysis_Main_Legacy.py for temporary legacy runs using in-script defaults
+
 
 def format_roi_display_name(roi_name: str) -> str:
     """Return a cleaner ROI name for plot titles/legends without changing internal IDs."""
@@ -33,7 +38,7 @@ def format_roi_display_name(roi_name: str) -> str:
 # ============================================================
 
 # These are the in-script default settings. You can override them at runtime
-# with: python Data_Analysis/Analysis_Main_Branch.py --config path/to/config.json
+# with: python Data_Analysis/Analysis_Main_Config_First.py --config path/to/config.json
 
 DICOM_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\VS Code Files\GAD_1_5.5P_2\GAD_1_5.5P_2"
 OUTPUT_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\VS Code Files\Results\Testing\GAD_Pressure_Test_Global_Shared_V_CODEX" # make sure to change this for each run to avoid overwriting previous outputs
