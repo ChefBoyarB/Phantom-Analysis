@@ -1,3 +1,5 @@
+import argparse
+import copy
 import os
 import glob
 import json
@@ -29,6 +31,9 @@ def format_roi_display_name(roi_name: str) -> str:
 # ============================================================
 # USER SETTINGS
 # ============================================================
+
+# These are the in-script default settings. You can override them at runtime
+# with: python Data_Analysis/Analysis_Main_Branch.py --config path/to/config.json
 
 DICOM_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\VS Code Files\GAD_1_5.5P_2\GAD_1_5.5P_2"
 OUTPUT_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\VS Code Files\Results\Testing\GAD_Pressure_Test_Global_Shared_V_CODEX" # make sure to change this for each run to avoid overwriting previous outputs
@@ -228,6 +233,225 @@ PECLET_LENGTH_MODE = "penetration_depth"   # "penetration_depth" or "roi_depth"
 PECLET_THRESHOLD_FRACTION = 0.10            # used only for penetration-depth based Pe
 PECLET_MIN_LENGTH_MM = 1e-6
 TRANSPORT_EPS = 1e-12
+
+
+# ============================================================
+# CONFIG SUPPORT
+# ============================================================
+
+configurable_setting_names = [
+    "DICOM_FOLDER",
+    "OUTPUT_FOLDER",
+    "PUMP_ON",
+    "FIT_VELOCITY",
+    "CONVECTION_METHOD",
+    "USE_FIRST_TIMEPOINT_AS_BASELINE",
+    "MANUAL_BASELINE_HU",
+    "HU_PER_CONC",
+    "HU_OFFSET",
+    "HU_PER_CONC_STD",
+    "HU_OFFSET_STD",
+    "CONCENTRATION_UNITS",
+    "ENABLE_HU_NOISE_UNCERTAINTY",
+    "DEEP_REGION_FRACTION_FOR_HU_NOISE",
+    "HU_NOISE_MONTE_CARLO_SAMPLES",
+    "ENABLE_ROI_SENSITIVITY_UNCERTAINTY",
+    "ROI_SENSITIVITY_SHIFTS",
+    "UNCERTAINTY_RANDOM_SEED",
+    "FLOW_RATE_ML_MIN",
+    "EFFECTIVE_AREA_MM2",
+    "PERMEABILITY_MM2",
+    "VISCOSITY_PA_S",
+    "PRESSURE_GRADIENT_PA_MM",
+    "DEPTH_AXIS",
+    "ROI_SELECTION_MODE",
+    "MANUAL_NAMED_ROIS",
+    "SAVE_SELECTED_ROIS_JSON",
+    "SKIP_INITIAL_FRAMES",
+    "APPLY_SPATIAL_SMOOTHING",
+    "SPATIAL_SMOOTH_SIGMA",
+    "APPLY_TEMPORAL_SMOOTHING",
+    "TEMPORAL_SMOOTH_SIGMA",
+    "APPLY_DEPTH_PROFILE_SMOOTHING",
+    "DEPTH_PROFILE_SMOOTH_SIGMA",
+    "LOCAL_MAP_APPLY_DEPTH_SMOOTHING",
+    "LOCAL_MAP_DEPTH_SMOOTH_SIGMA",
+    "LOCAL_MAP_APPLY_TEMPORAL_SMOOTHING",
+    "LOCAL_MAP_TEMPORAL_SMOOTH_SIGMA",
+    "LOCAL_MAP_FIT_PROFILE_THRESHOLD_FRACTION",
+    "LOCAL_MAP_D_BOUNDS",
+    "MIN_TIME_SECONDS_FOR_FIT",
+    "MIN_VALID_POINTS_FOR_FIT",
+    "FIT_ONLY_POSITIVE_CONCENTRATION",
+    "FIT_PROFILE_THRESHOLD_FRACTION",
+    "MAX_CS_FACTOR",
+    "D_BOUNDS",
+    "V_BOUNDS",
+    "SAVE_PIXELWISE_APPARENT_DIFFUSION_MAP",
+    "SAVE_EFFECTIVE_DIFFUSION_MAP",
+    "LOCAL_EFFECTIVE_MAP_WINDOW_SIZE",
+    "SAVE_DERIVED_EFFECTIVE_DIFFUSION_MAP",
+    "DERIVED_EFFECTIVE_D_BOUNDS",
+    "DERIVED_EFFECTIVE_CURVATURE_EPS",
+    "ENABLE_GLOBAL_SPATIOTEMPORAL_FIT",
+    "GLOBAL_CS_NUM_CONTROL_POINTS",
+    "GLOBAL_FIT_INCLUDE_VELOCITY",
+    "GLOBAL_FIT_MAX_NFEV",
+    "ENABLE_TEMPORALLY_REGULARIZED_FIT",
+    "REGULARIZED_FIT_MAX_NFEV",
+    "REGULARIZED_FIT_LAMBDA_D",
+    "REGULARIZED_FIT_LAMBDA_CS",
+    "REGULARIZED_FIT_LAMBDA_CS_MONOTONIC",
+    "TIME_UNIT",
+    "PLOT_DEPTH_ZERO_AT_TOP",
+    "PECLET_LENGTH_MODE",
+    "PECLET_THRESHOLD_FRACTION",
+    "PECLET_MIN_LENGTH_MM",
+    "TRANSPORT_EPS",
+]
+
+tuple_setting_names = {
+    "LOCAL_MAP_D_BOUNDS",
+    "D_BOUNDS",
+    "V_BOUNDS",
+    "DERIVED_EFFECTIVE_D_BOUNDS",
+}
+
+path_setting_names = {
+    "DICOM_FOLDER",
+    "OUTPUT_FOLDER",
+}
+
+allowed_config_metadata_keys = {
+    "config_name",
+    "description",
+    "notes",
+}
+
+default_user_settings = {
+    name: copy.deepcopy(globals()[name])
+    for name in configurable_setting_names
+}
+
+active_config_info = {
+    "using_in_script_defaults": True,
+    "config_path": None,
+    "config_name": None,
+    "description": None,
+    "notes": None,
+    "applied_settings": [],
+}
+
+
+def reset_user_settings_to_defaults():
+    for name, value in default_user_settings.items():
+        globals()[name] = copy.deepcopy(value)
+
+
+def normalize_config_path_value(setting_name: str, value, config_dir: str):
+    if setting_name not in path_setting_names or value in (None, ""):
+        return value
+    if not isinstance(value, str):
+        raise TypeError(f"{setting_name} must be a string path in the config.")
+    expanded = os.path.expanduser(value)
+    if os.path.isabs(expanded):
+        return os.path.abspath(expanded)
+    return os.path.abspath(os.path.join(config_dir, expanded))
+
+
+def normalize_setting_from_config(setting_name: str, value, config_dir: str):
+    value = normalize_config_path_value(setting_name, value, config_dir)
+
+    if setting_name in tuple_setting_names:
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            raise ValueError(f"{setting_name} must contain exactly 2 values in the config.")
+        return tuple(value)
+
+    if setting_name == "ROI_SENSITIVITY_SHIFTS":
+        if not isinstance(value, (list, tuple)):
+            raise ValueError("ROI_SENSITIVITY_SHIFTS must be a list in the config.")
+        return [int(v) for v in value]
+
+    if setting_name == "MANUAL_NAMED_ROIS":
+        if not isinstance(value, (list, tuple)):
+            raise ValueError("MANUAL_NAMED_ROIS must be a list of [name, [r0, r1, c0, c1]] items.")
+        normalized_rois = []
+        for item in value:
+            if not isinstance(item, (list, tuple)) or len(item) != 2:
+                raise ValueError("Each MANUAL_NAMED_ROIS entry must contain exactly [name, roi_coords].")
+            roi_name, roi_coords = item
+            if not isinstance(roi_coords, (list, tuple)) or len(roi_coords) != 4:
+                raise ValueError(f"ROI '{roi_name}' must contain 4 coordinates: [r0, r1, c0, c1].")
+            normalized_rois.append([str(roi_name), [int(v) for v in roi_coords]])
+        return normalized_rois
+
+    return value
+
+
+def load_settings_from_config(config_path: str) -> Dict[str, object]:
+    config_path = os.path.abspath(config_path)
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        raw_config = json.load(f)
+
+    if not isinstance(raw_config, dict):
+        raise ValueError("Config file must contain a top-level JSON object.")
+
+    if "settings" in raw_config:
+        if not isinstance(raw_config["settings"], dict):
+            raise ValueError("The optional 'settings' entry must contain a JSON object.")
+        settings_payload = raw_config["settings"]
+    else:
+        settings_payload = raw_config
+
+    name_lookup = {name.lower(): name for name in configurable_setting_names}
+    config_dir = os.path.dirname(config_path)
+    overrides = {}
+    unknown_keys = []
+
+    for key, value in settings_payload.items():
+        if key in allowed_config_metadata_keys:
+            continue
+
+        setting_name = key if key in configurable_setting_names else name_lookup.get(str(key).lower())
+        if setting_name is None:
+            unknown_keys.append(str(key))
+            continue
+
+        overrides[setting_name] = normalize_setting_from_config(setting_name, value, config_dir)
+
+    if unknown_keys:
+        joined = ", ".join(sorted(unknown_keys))
+        raise ValueError(f"Unknown config setting(s): {joined}")
+
+    reset_user_settings_to_defaults()
+    for setting_name, value in overrides.items():
+        globals()[setting_name] = value
+
+    global active_config_info
+    active_config_info = {
+        "using_in_script_defaults": False,
+        "config_path": config_path,
+        "config_name": raw_config.get("config_name"),
+        "description": raw_config.get("description"),
+        "notes": raw_config.get("notes"),
+        "applied_settings": sorted(overrides.keys()),
+    }
+    return copy.deepcopy(active_config_info)
+
+
+def parse_cli_args():
+    parser = argparse.ArgumentParser(
+        description="Analyze a transport DICOM dataset. Optionally load run settings from a JSON config file."
+    )
+    parser.add_argument(
+        "--config",
+        dest="config_path",
+        help="Path to a JSON config file. Relative DICOM/OUTPUT paths are resolved relative to the config file.",
+    )
+    return parser.parse_args()
 
 
 # ============================================================
@@ -4152,7 +4376,7 @@ def save_run_metadata(output_folder: str, metadata: Dict[str, object]) -> str:
 # MAIN
 # ============================================================
 
-def main():
+def main(config_info: Optional[Dict[str, object]] = None):
     ensure_dir(OUTPUT_FOLDER)
 
     run_metadata = {
@@ -4160,6 +4384,7 @@ def main():
         "script_path": os.path.abspath(__file__) if "__file__" in globals() else None,
         "run_timestamp_local": datetime.now().isoformat(timespec="seconds"),
         "output_folder_absolute": os.path.abspath(OUTPUT_FOLDER),
+        "config": _make_json_safe(config_info if config_info is not None else active_config_info),
         "user_settings": collect_user_settings_metadata(),
     }
 
@@ -4512,4 +4737,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cli_args = parse_cli_args()
+    config_info = copy.deepcopy(active_config_info)
+
+    if cli_args.config_path:
+        config_info = load_settings_from_config(cli_args.config_path)
+        print(f"Loaded config file: {config_info['config_path']}")
+        if config_info.get("config_name"):
+            print(f"Config name: {config_info['config_name']}")
+    else:
+        print("No config file supplied. Using the in-script default settings.")
+
+    main(config_info=config_info)
