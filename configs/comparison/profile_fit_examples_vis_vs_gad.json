@@ -1,0 +1,54 @@
+{
+  "description": "Example multi-tracer profile-fit comparison config.",
+  "notes": [
+    "Use one sample block per analyzed output folder.",
+    "To add replicates for a tracer, copy another sample entry under that tracer and change sample_id/run_rel or run_path.",
+    "This example keeps one VIS sample and one GAD sample to mirror the old two-tracer workflow."
+  ],
+  "results_source": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/Results/Results_Paper_1",
+  "out_folder": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/Results/Results_Paper_1/Paper_1_Comparisons",
+  "figure_title": "Profile Fit Comparison: VIS 320 and GAD",
+  "target_times_min": [
+    0.2,
+    11.0,
+    22.0
+  ],
+  "stats_alpha": 0.05,
+  "stats_metrics": [
+    "effective_diffusivity_mm2_s",
+    "fitted_Cs",
+    "profile_fit_r2",
+    "fitted_profile_auc_concentration_x_mm",
+    "peak_fitted_concentration"
+  ],
+  "tracers": [
+    {
+      "name": "VIS320",
+      "label": "VIS 320",
+      "color": "#1f77b4",
+      "marker": "o",
+      "roi_folder": "VIS_320",
+      "dx_mm": 0.166,
+      "samples": [
+        {
+          "sample_id": "VIS320_01",
+          "run_rel": "VIS320_Swollen_No_Pressure_135kvp"
+        }
+      ]
+    },
+    {
+      "name": "GAD",
+      "label": "GAD",
+      "color": "#d95f02",
+      "marker": "s",
+      "roi_folder": "GAD",
+      "dx_mm": 0.166,
+      "samples": [
+        {
+          "sample_id": "GAD_01",
+          "run_rel": "GAD_Swollen_No_Pressure_135kvp"
+        }
+      ]
+    }
+  ]
+}

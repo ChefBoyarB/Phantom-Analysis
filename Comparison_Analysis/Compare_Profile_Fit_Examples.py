@@ -1,4 +1,13 @@
+from Compare_Profile_Fit_Examples_Engine import main
 
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+# Legacy two-tracer implementation is preserved below as a raw string reference
+# while the active workflow now lives in Compare_Profile_Fit_Examples_Engine.py.
+r"""
 import io
 import os
 import json
@@ -742,3 +751,4 @@ save_audit_report(OUT_FOLDER, audit_payload)
 print('Saved audit files to:', str(Path(OUT_FOLDER) / 'profile_fit_examples' / 'audit'))
 print('Saved profile-fit example outputs under:', str(Path(OUT_FOLDER) / 'profile_fit_examples'))
 print('Done.')
+"""
