@@ -1,10 +1,10 @@
 {
-  "config_name": "VIS320_Run_1",
-  "description": "VIS 320 diffusion-only run 1 using Manual locked ROI selection and the VIS 320 135 kVp calibration.",
+  "config_name": "VIS320_Run_2",
+  "description": "VIS 320 diffusion-only run 2 using Manual locked ROI selection and the VIS 320 135 kVp calibration.",
   "notes": "Finalized and accepted outputs created.",
   "settings": {
-    "dicom_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\VS Code Files\\Data RAW\\ERFC_Ficks_Law\\VIS320_1_0P_10_Swollen_Main",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\VIS320_Run_1",
+    "dicom_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\VS Code Files\\Data RAW\\ERFC_Ficks_Law\\VIS320_1_0P_7",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\VIS320_Run_2",
     "pump_on": false,
     "fit_velocity": false,
     "convection_method": "none",
@@ -31,7 +31,7 @@
     "manual_named_rois": [
       [
         "VIS_320",
-        [111, 130, 180, 216]
+        [98, 109, 216, 242]
       ]
     ],
     "save_selected_rois_json": true,

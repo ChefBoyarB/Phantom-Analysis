@@ -1,19 +1,19 @@
 {
-  "config_name": "VIS320_Run_1",
-  "description": "VIS 320 diffusion-only run 1 using Manual locked ROI selection and the VIS 320 135 kVp calibration.",
+  "config_name": "GAD_Run_2",
+  "description": "GAD diffusion-only run 2 using manual locked ROI selection and the GAD 135 kVp template.",
   "notes": "Finalized and accepted outputs created.",
   "settings": {
-    "dicom_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\VS Code Files\\Data RAW\\ERFC_Ficks_Law\\VIS320_1_0P_10_Swollen_Main",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\VIS320_Run_1",
+    "dicom_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\VS Code Files\\Data RAW\\ERFC_Ficks_Law\\GAD_1_0P_2_Swollen\\GAD_1_0P_2",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\GAD_Run_2",
     "pump_on": false,
     "fit_velocity": false,
     "convection_method": "none",
     "use_first_timepoint_as_baseline": false,
     "manual_baseline_hu": null,
-    "hu_per_conc": 16.189,
-    "hu_offset": 12.271,
-    "hu_per_conc_std": 0.0117,
-    "hu_offset_std": 0.2982,
+    "hu_per_conc": 8.681,
+    "hu_offset": 12.705,
+    "hu_per_conc_std": 0.0069,
+    "hu_offset_std": 0.176,
     "concentration_units": "mg/mL",
     "enable_hu_noise_uncertainty": true,
     "deep_region_fraction_for_hu_noise": 0.1,
@@ -30,12 +30,12 @@
     "roi_selection_mode": "manual_list",
     "manual_named_rois": [
       [
-        "VIS_320",
-        [111, 130, 180, 216]
+        "GAD",
+        [137, 155, 184, 220]
       ]
     ],
     "save_selected_rois_json": true,
-    "skip_initial_frames": 0,
+    "skip_initial_frames": 2,
     "apply_spatial_smoothing": false,
     "spatial_smooth_sigma": 0.8,
     "apply_temporal_smoothing": false,
