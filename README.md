@@ -39,6 +39,11 @@ That README explains:
 - which comparison config file to edit
 - which CSV/statistics outputs are written
 
+Current example comparison configs include:
+
+- `configs/comparison/profile_fit_examples_vis_vs_gad.json`
+- `configs/comparison/profile_fit_examples_vis320_gad_n2.json`
+
 ### `Table_Generation/`
 Contains scripts that generate support tables and manuscript-style outputs from completed analysis results.
 
@@ -73,6 +78,10 @@ For new dataset analysis work:
 3. Run the analysis using `Analysis_Main_Config_First.py`
 4. Create or update a comparison config in `configs/comparison/` when you want to compare multiple analyzed runs
 5. Use `Comparison_Analysis/` and `Table_Generation/` after the per-dataset analysis outputs are generated
+
+For example, the current four-run VIS-vs-GAD profile-fit comparison uses:
+
+- `configs/comparison/profile_fit_examples_vis320_gad_n2.json`
 
 ## Notes
 

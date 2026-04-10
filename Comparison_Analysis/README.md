@@ -18,6 +18,12 @@ Run from the repo root:
 & '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Profile_Fit_Examples.py --config configs\comparison\profile_fit_examples_vis_vs_gad.json
 ```
 
+Another ready-to-edit example for the current `n = 2` VIS-vs-GAD comparison workflow is:
+
+```powershell
+& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Profile_Fit_Examples.py --config configs\comparison\profile_fit_examples_vis320_gad_n2.json
+```
+
 ### Other comparison scripts
 
 - `Compare_Maps.py`
@@ -42,6 +48,7 @@ The normal flow is:
 The example config is:
 
 - `configs/comparison/profile_fit_examples_vis_vs_gad.json`
+- `configs/comparison/profile_fit_examples_vis320_gad_n2.json`
 
 Important top-level fields:
 
@@ -77,6 +84,8 @@ If needed, a sample can also override:
 
 Use `run_rel` when the sample folder is under a shared `results_source`.
 Use `run_path` when you want to point directly to an output folder somewhere else.
+
+Use a sample-level `dx_mm` override when runs in the same tracer group do not share the same pixel spacing. This is the recommended pattern when mixing runs that were reconstructed with different FOV or pixel size.
 
 ### Late-time windows
 
@@ -198,12 +207,25 @@ This gives you:
 ### `pairwise_significance_tests.csv`
 Pairwise Welch t-tests between tracers at each target time and for each metric.
 
+- `p_value_raw` is the uncorrected p-value
+- `p_value_holm` is the Holm-corrected p-value
+- `significant = true` means the corrected p-value is below `alpha`
+
 If each tracer has fewer than 2 samples, the script will still write the file, but it will note that significance testing is not valid yet.
 
 ### `omnibus_significance_tests.csv`
 One-way ANOVA across tracers for each target time and metric.
 
 This is only meaningful when you have 3 or more tracer groups and enough samples in each group.
+
+If you are comparing only two tracers, the pairwise Welch t-test table is the main significance output to read.
+
+## Practical Guidance
+
+- Match profiles by physical time in minutes, not by frame index.
+- Compare depth on the common `mm` grid created by the script, not by raw pixel row.
+- Treat `profile_fit_r2` mainly as a QC metric. For that field, the main goal is high values for both tracers, not necessarily a significant difference.
+- For tracer separation, the most informative metrics are usually `effective_diffusivity_mm2_s`, `fitted_profile_auc_concentration_x_mm`, and sometimes `fitted_Cs`.
 
 ## Best Practice
 

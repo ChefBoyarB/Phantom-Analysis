@@ -6,7 +6,7 @@
     "Target times are set within the overlapping usable window across the four chosen runs."
   ],
   "results_source": "C:/Users/brend/OneDrive - University of Toronto/Paper_1_Results/Diffusion_Only_Results",
-  "out_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Compare_Porfile_Fit_Examples",
+  "out_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Compare_Profile_Fit_Examples",
   "figure_title": "Profile Fit Comparison: VIS 320 vs GAD (n=2 per tracer)",
   "target_times_min": [
     0.25,

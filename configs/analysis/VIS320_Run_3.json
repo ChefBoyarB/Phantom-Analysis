@@ -27,7 +27,7 @@
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -111.1,
     "depth_axis": "rows",
-    "roi_selection_mode": "interactive",
+    "roi_selection_mode": "manual_list",
     "manual_named_rois": [
       [
         "VIS_320",
