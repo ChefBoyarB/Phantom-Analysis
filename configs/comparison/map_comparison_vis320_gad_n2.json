@@ -37,11 +37,11 @@
       "samples": [
         {
           "sample_id": "VIS320_01",
-          "analysis_config": "../analysis/VIS320_Run_1.json"
+          "analysis_config": "../analysis/Diffusion/VIS320_Run_1.json"
         },
         {
           "sample_id": "VIS320_02",
-          "analysis_config": "../analysis/VIS320_Run_2.json"
+          "analysis_config": "../analysis/Diffusion/VIS320_Run_2.json"
         }
       ]
     },
@@ -53,11 +53,11 @@
       "samples": [
         {
           "sample_id": "GAD_01",
-          "analysis_config": "../analysis/GAD_Run_1.json"
+          "analysis_config": "../analysis/Diffusion/GAD_Run_1.json"
         },
         {
           "sample_id": "GAD_02",
-          "analysis_config": "../analysis/GAD_Run_2.json"
+          "analysis_config": "../analysis/Diffusion/GAD_Run_2.json"
         }
       ]
     }
