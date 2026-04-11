@@ -1,3 +1,11 @@
+from Compare_Maps_Engine import main
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+r"""
 import io
 import os
 import json
@@ -918,3 +926,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""
