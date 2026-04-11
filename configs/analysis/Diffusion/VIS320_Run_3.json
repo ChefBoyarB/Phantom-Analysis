@@ -1,10 +1,10 @@
 {
-  "config_name": "VIS320_Run_2",
-  "description": "VIS 320 diffusion-only run 2 using Manual locked ROI selection and the VIS 320 135 kVp calibration.",
-  "notes": "Finalized and accepted outputs created.",
+  "config_name": "VIS320_Run_3",
+  "description": "VIS 320 diffusion-only run 3 using a manually locked compromise ROI rerun and the VIS 320 135 kVp calibration.",
+  "notes": "Needs new dataset. The current dataset does not have all the files.",
   "settings": {
-    "dicom_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\VS Code Files\\Data RAW\\ERFC_Ficks_Law\\VIS320_1_0P_7",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\VIS320_Run_2",
+    "dicom_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\VS Code Files\\Data RAW\\ERFC_Ficks_Law\\VIS12_GAD3_1_0P",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\VIS320_Run_3",
     "pump_on": false,
     "fit_velocity": false,
     "convection_method": "none",
@@ -27,15 +27,15 @@
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -111.1,
     "depth_axis": "rows",
-    "roi_selection_mode": "manual_list",
+    "roi_selection_mode": "interactive",
     "manual_named_rois": [
       [
         "VIS_320",
-        [98, 109, 216, 242]
+        [126, 145, 196, 233]
       ]
     ],
     "save_selected_rois_json": true,
-    "skip_initial_frames": 0,
+    "skip_initial_frames": 2,
     "apply_spatial_smoothing": false,
     "spatial_smooth_sigma": 0.8,
     "apply_temporal_smoothing": false,

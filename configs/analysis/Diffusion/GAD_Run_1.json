@@ -1,9 +1,9 @@
 {
   "config_name": "GAD_Run_1",
   "description": "GAD diffusion-only run 1 based on the no-pressure 135 kVp template.",
-  "notes": "Generated from gad_no_pressure_135kvp.json. All settings match the GAD diffusion-only template except for the run-specific input/output folders.",
+  "notes": "Needs a new dataset. The current dataset does not have all the files.",
   "settings": {
-    "dicom_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\VS Code Files\\Data RAW\\ERFC_Ficks_Law\\GAD_1.0_0P_1\\GAD_1.0_0P_1",
+    "dicom_folder": "D:\\DICOMS\\ERFC Ficks\\VIS12_GAD4_1_0P",
     "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\GAD_Run_1",
     "pump_on": false,
     "fit_velocity": false,
@@ -27,7 +27,7 @@
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -111.1,
     "depth_axis": "rows",
-    "roi_selection_mode": "manual_list",
+    "roi_selection_mode": "interactive",
     "manual_named_rois": [
       [
         "GAD",
