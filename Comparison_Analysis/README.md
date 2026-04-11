@@ -24,13 +24,24 @@ Another ready-to-edit example for the current `n = 2` VIS-vs-GAD comparison work
 & '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Profile_Fit_Examples.py --config configs\comparison\profile_fit_examples_vis320_gad_n2.json
 ```
 
+### `Compare_Maps.py`
+Use this to compare concentration, flux, and diffusivity maps across multiple tracers and multiple samples per tracer.
+
+- This is now a config-driven workflow
+- You run it with `--config`
+- The active comparison logic lives in `Compare_Maps_Engine.py`
+- `Compare_Maps.py` is the normal entry point you should run
+
+Run from the repo root:
+
+```powershell
+& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Maps.py --config configs\comparison\map_comparison_vis320_gad_n2.json
+```
+
 ### Other comparison scripts
 
-- `Compare_Maps.py`
 - `Compare_Time_Course_CSV_Plots.py`
 - `Pump_Profile_Comparison_Figure_Generator.py`
-
-Those scripts are still separate workflows and are not yet using the new multi-sample profile-fit config format.
 
 ## Profile-Fit Comparison Workflow
 
@@ -263,4 +274,73 @@ Use this for the profile-fit comparison workflow:
 
 ```powershell
 & '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Profile_Fit_Examples.py --config configs\comparison\your_comparison_config.json
+```
+
+## Map Comparison Workflow
+
+Use this after the per-dataset outputs already exist in `Data_Analysis/`.
+
+The ready-to-edit example config is:
+
+- `configs/comparison/map_comparison_vis320_gad_n2.json`
+
+The top-level structure mirrors the profile-fit comparison:
+
+- `out_folder`
+- `figure_title`
+- `target_times_min`
+- `target_time_map_key`
+- `stats_alpha`
+- `stats_metrics`
+- `report_windows`
+- `tracers`
+
+Each tracer entry defines:
+
+- `name`
+- `label`
+- `color`
+- `marker`
+- `samples`
+
+Each sample can use one of:
+
+- `run_rel`
+- `run_path`
+- `analysis_config`
+
+`analysis_config` is the new shortcut for map comparison. When you use it, the script can infer:
+
+- the analysis output folder from `settings.output_folder`
+- `dx_mm` from `run_metadata.json`
+- `roi_folder` when the analysis run has exactly one selected ROI
+
+If needed, a sample can still override:
+
+- `sample_id`
+- `roi_folder`
+- `dx_mm`
+
+The map comparison writes outputs under:
+
+- `map_comparisons/per_timepoint/`
+- `map_comparisons/temporally_regularized/`
+- `map_comparisons/secondary/`
+- `map_comparisons/summaries/`
+- `map_comparisons/audit/`
+
+The main summary tables are:
+
+- `map_comparisons/summaries/per_sample_target_time_map_metrics.csv`
+- `map_comparisons/summaries/per_sample_all_time_map_metrics.csv`
+- `map_comparisons/summaries/tracer_group_map_metric_summary.csv`
+- `map_comparisons/summaries/pairwise_map_significance_tests.csv`
+- `map_comparisons/summaries/omnibus_map_significance_tests.csv`
+
+Windowed late-time summaries follow the same pattern as the profile-fit workflow.
+
+Use this for the map comparison workflow:
+
+```powershell
+& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Maps.py --config configs\comparison\your_map_comparison_config.json
 ```

@@ -1,0 +1,65 @@
+{
+  "description": "Map comparison config for the selected VIS320 and GAD diffusion-only runs (n=2 per tracer), using analysis-config paths to resolve each sample's output folder.",
+  "notes": [
+    "Each sample points to its Data_Analysis config instead of duplicating the output folder, ROI folder, and dx_mm.",
+    "ROI folder and depth spacing are inferred from run_metadata.json when available.",
+    "Target times are set within the overlapping usable window across the four chosen runs."
+  ],
+  "out_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Compare_Maps_VIS320_vs_GAD_n2",
+  "figure_title": "Map Comparison: VIS 320 vs GAD (n=2 per tracer)",
+  "target_times_min": [
+    0.25,
+    10.0,
+    20.0
+  ],
+  "target_time_map_key": "per_timepoint_fitted_profiles",
+  "stats_alpha": 0.05,
+  "stats_metrics": [
+    "depth_mean",
+    "depth_integral_x_mm",
+    "depth_max",
+    "surface_value",
+    "penetration_depth_10pct_peak_mm"
+  ],
+  "report_windows": [
+    {
+      "name": "post_5min",
+      "min_time_min": 5.0,
+      "max_time_min": null
+    }
+  ],
+  "tracers": [
+    {
+      "name": "VIS320",
+      "label": "VIS 320",
+      "color": "#1f77b4",
+      "marker": "o",
+      "samples": [
+        {
+          "sample_id": "VIS320_01",
+          "analysis_config": "../analysis/VIS320_Run_1.json"
+        },
+        {
+          "sample_id": "VIS320_02",
+          "analysis_config": "../analysis/VIS320_Run_2.json"
+        }
+      ]
+    },
+    {
+      "name": "GAD",
+      "label": "GAD",
+      "color": "#d95f02",
+      "marker": "s",
+      "samples": [
+        {
+          "sample_id": "GAD_01",
+          "analysis_config": "../analysis/GAD_Run_1.json"
+        },
+        {
+          "sample_id": "GAD_02",
+          "analysis_config": "../analysis/GAD_Run_2.json"
+        }
+      ]
+    }
+  ]
+}
