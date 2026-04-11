@@ -14,7 +14,7 @@ Use this for **normal work going forward**.
 Run from the repo root:
 
 ```powershell
-& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\vis320_no_pressure_135kvp.json
+& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\Old\vis320_no_pressure_135kvp.json
 ```
 
 ### 2. `Analysis_Main_Legacy.py`
@@ -42,22 +42,33 @@ Use the **config-first** workflow for new datasets.
 
 ### Step 1. Copy the closest existing config
 
-Current example configs:
+Current config folders:
 
-- `configs/analysis/gad_pressure_135kvp.json`
-- `configs/analysis/gad_no_pressure_135kvp.json`
-- `configs/analysis/vis320_no_pressure_135kvp.json`
+- `configs/analysis/Old/`
+- `configs/analysis/Diffusion/`
+
+Current example configs include:
+
+- `configs/analysis/Old/gad_pressure_135kvp.json`
+- `configs/analysis/Old/gad_no_pressure_135kvp.json`
+- `configs/analysis/Old/vis320_no_pressure_135kvp.json`
+- `configs/analysis/Diffusion/GAD_Run_1.json`
+- `configs/analysis/Diffusion/GAD_Run_2.json`
+- `configs/analysis/Diffusion/VIS320_Run_1.json`
+- `configs/analysis/Diffusion/VIS320_Run_2.json`
+- `configs/analysis/Diffusion/VIS320_Run_3.json`
 
 For a new run:
 
 1. Copy the closest config
 2. Rename it
-3. Edit only the values that should change for the new dataset
+3. Save it in the subfolder that best matches its role
+4. Edit only the values that should change for the new dataset
 
 Example:
 
-- copy `vis320_no_pressure_135kvp.json`
-- rename to `vis320_no_pressure_repeat2.json`
+- copy `configs/analysis/Old/vis320_no_pressure_135kvp.json`
+- rename it to something like `configs/analysis/Diffusion/VIS320_Run_4.json`
 
 ### Step 2. Edit the config file
 
@@ -66,12 +77,15 @@ The most common fields you will change are:
 - `dicom_folder`
 - `output_folder`
 - `pump_on`
+- `fit_velocity`
 - `convection_method`
 - `hu_per_conc`
 - `hu_offset`
 - `hu_per_conc_std`
 - `hu_offset_std`
+- `roi_selection_mode`
 - `manual_named_rois`
+- `save_selected_rois_json`
 - `skip_initial_frames`
 
 You do **not** need to change every field for every dataset.
@@ -79,7 +93,7 @@ You do **not** need to change every field for every dataset.
 ### Step 3. Run the config-first launcher
 
 ```powershell
-& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\your_new_config.json
+& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\Diffusion\your_new_config.json
 ```
 
 ## Legacy Workflow
@@ -136,6 +150,26 @@ For example, for your VIS workflow, a reasonable template is to keep the same VI
 
 The goal is not to force identical coordinates in every dataset. The goal is to keep the ROI as similar as possible in physical meaning while still excluding clearly invalid regions.
 
+### ROI selection modes
+
+The analysis engine currently supports three ROI workflows:
+
+- `interactive`: draw ROIs with the mouse during the run
+- `manual_list`: reuse exact ROI coordinates already saved in the config
+- `manual_prompt`: type ROI coordinates into the terminal during the run
+
+For locked reruns, `manual_list` is the usual choice.
+
+### Reusing saved ROIs
+
+If `save_selected_rois_json` is enabled, each run writes `selected_rois_for_rerun.json` into the output folder.
+
+Use this file when you want to:
+
+- confirm which ROI coordinates were actually used in a completed run
+- copy those coordinates into `manual_named_rois` for a locked rerun
+- keep ROI definitions consistent across repeated analyses
+
 ## Output Checking
 
 When a run finishes, the most useful files for checking whether two runs match are:
@@ -152,7 +186,7 @@ When a run finishes, the most useful files for checking whether two runs match a
 Use this for normal runs:
 
 ```powershell
-& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\some_config.json
+& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\Diffusion\some_config.json
 ```
 
 Use this only for old-style manual runs:

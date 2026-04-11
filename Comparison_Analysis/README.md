@@ -59,6 +59,7 @@ Important top-level fields:
 - `report_windows`
 - `stats_alpha`
 - `stats_metrics`
+- `window_stats_metrics`
 - `tracers`
 
 Each tracer entry defines:
@@ -104,6 +105,25 @@ Example:
 ```
 
 This writes both generic window summary CSVs and window-specific files such as `post_5min_...csv`.
+
+Use `window_stats_metrics` when you want the window-based statistics tables to use a different metric list than `stats_metrics`.
+
+If `window_stats_metrics` is omitted, the script uses the available summary metrics from the all-time table.
+
+### Common metric choices
+
+Current comparison configs often use:
+
+- `effective_diffusivity_mm2_s`
+- `fitted_Cs`
+- `profile_fit_r2`
+- `fitted_profile_auc_concentration_x_mm`
+- `peak_fitted_concentration`
+
+For pump-on analyses, the comparison engine also supports:
+
+- `fitted_velocity_mm_s`
+- `peclet_number`
 
 ## Uncertainty Definitions
 
@@ -226,6 +246,7 @@ If you are comparing only two tracers, the pairwise Welch t-test table is the ma
 - Compare depth on the common `mm` grid created by the script, not by raw pixel row.
 - Treat `profile_fit_r2` mainly as a QC metric. For that field, the main goal is high values for both tracers, not necessarily a significant difference.
 - For tracer separation, the most informative metrics are usually `effective_diffusivity_mm2_s`, `fitted_profile_auc_concentration_x_mm`, and sometimes `fitted_Cs`.
+- For pump-on datasets, `peclet_number` is often a better transport comparison than velocity alone because it reflects both convection and diffusivity.
 
 ## Best Practice
 

@@ -17,6 +17,7 @@ That README explains:
 - the legacy workflow
 - which analysis file to run
 - how to create and use configs
+- how the current analysis configs are organized into subfolders
 
 ### `Comparison_Analysis/`
 Contains scripts that compare outputs across completed analysis runs.
@@ -74,7 +75,8 @@ Or use the project virtual environment:
 For new dataset analysis work:
 
 1. Use the config-first analysis workflow in `Data_Analysis/`
-2. Create or copy a config in `configs/analysis/`
+2. Create or copy a config under `configs/analysis/`
+   Current analysis configs are organized into subfolders such as `Old/` and `Diffusion/`
 3. Run the analysis using `Analysis_Main_Config_First.py`
 4. Create or update a comparison config in `configs/comparison/` when you want to compare multiple analyzed runs
 5. Use `Comparison_Analysis/` and `Table_Generation/` after the per-dataset analysis outputs are generated
@@ -86,6 +88,6 @@ For example, the current four-run VIS-vs-GAD profile-fit comparison uses:
 ## Notes
 
 - `Analysis_Main_Engine.py` is now the shared analysis engine behind the config-first and legacy launchers.
-- `configs/analysis/` holds reusable dataset/run settings for the config-first workflow.
+- `configs/analysis/` holds reusable dataset/run settings for the config-first workflow and is currently organized into subfolders such as `Old/` and `Diffusion/`.
 - `configs/comparison/` holds reusable settings for comparison workflows such as multi-sample profile-fit comparisons.
 - Generated output folders are not the same thing as source code; keep code changes and result folders conceptually separate when using Git.
