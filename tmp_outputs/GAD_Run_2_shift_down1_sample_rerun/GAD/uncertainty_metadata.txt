@@ -1,0 +1,10 @@
+Estimated HU noise std from deep ROI region: 6.20876 HU
+Estimated concentration noise std from deep ROI region: 0.715213 mg/mL
+HU noise Monte Carlo samples: 10
+ROI sensitivity shifts: [-1, 0, 1]
+ROI sensitivity variants used: [(137, 155, 184, 220), (138, 156, 184, 220), (139, 157, 184, 220)]
+HU_PER_CONC_STD input: 0.0069
+HU_OFFSET_STD input: 0.176
+Calibration uncertainty estimated by ±1 SD perturbation refits of HU_PER_CONC and HU_OFFSET.
+Fixed-ROI uncertainty outputs are now saved for D(t), C_s(t), v(t), mean concentration, fitted profiles, derived effective diffusivity maps, and regional fitted-profile summaries. Fixed-ROI means model fit + HU noise + calibration, excluding ROI sensitivity.
+Diffusive flux uncertainty maps use fixed-ROI propagation from D(t) and fitted-profile uncertainty components (model fit, HU noise, calibration), with combined maps also including ROI sensitivity.

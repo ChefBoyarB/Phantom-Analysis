@@ -1,0 +1,14 @@
+{
+  "roi_selection_mode_used": "manual_list",
+  "manual_named_rois_ready_to_copy": [
+    [
+      "VIS_320",
+      [
+        124,
+        142,
+        188,
+        224
+      ]
+    ]
+  ]
+}

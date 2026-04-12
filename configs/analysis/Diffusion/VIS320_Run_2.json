@@ -27,15 +27,15 @@
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -111.1,
     "depth_axis": "rows",
-    "roi_selection_mode": "interactive",
+    "roi_selection_mode": "manual_list",
     "manual_named_rois": [
       [
         "VIS_320",
-        [98, 109, 216, 242]
+        [124, 142, 188, 224]
       ]
     ],
     "save_selected_rois_json": true,
-    "skip_initial_frames": 0,
+    "skip_initial_frames": 2,
     "apply_spatial_smoothing": false,
     "spatial_smooth_sigma": 0.8,
     "apply_temporal_smoothing": false,

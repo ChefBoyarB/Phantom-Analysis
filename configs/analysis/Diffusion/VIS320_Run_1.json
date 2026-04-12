@@ -1,7 +1,7 @@
 {
   "config_name": "VIS320_Run_1",
-  "description": "VIS 320 diffusion-only run 1 using Manual locked ROI selection and the VIS 320 135 kVp calibration.",
-  "notes": "Finalized and accepted outputs created.",
+  "description": "VIS 320 diffusion-only run 1 using Manual locked ROI selection and the VIS 320 135 kVp calibration. Goal to determine D and Cs with no convection and pump with 1% agarose gel phantom.",
+  "notes": "Finalized and accepted outputs created. Manual locked ROI selection used. VIS 320 135 kVp calibration used. HU noise uncertainty enabled with 10 Monte Carlo samples. ROI sensitivity uncertainty enabled with shifts of -1, 0, and +1. Global spatiotemporal fit enabled with 6 control points and max_nfev of 50000, without velocity included. Temporally regularized fit enabled with max_nfev of 50000 and lambda_d of 2.0, lambda_cs of 1.0, and lambda_cs_monotonic of 2.0.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ERFC Ficks\\VIS320_1_0P_10",
     "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\VIS320_Run_1",

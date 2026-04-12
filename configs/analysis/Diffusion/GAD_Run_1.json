@@ -1,7 +1,7 @@
 {
   "config_name": "GAD_Run_1",
-  "description": "GAD diffusion-only run 1 based on the no-pressure 135 kVp template.",
-  "notes": "Needs a new dataset. The current dataset does not have all the files.",
+  "description": "GAD diffusion-only run 1 based on the no-pressure 135 kVp template. Goal to determine D and Cs with no convection and pump with 1% agarose gel phantom.",
+  "notes": "Finalized and accepted outputs created. Manual locked ROI selection used based on visual assessment of where contrast penetrated in the gel. HU noise uncertainty enabled with 10 Monte Carlo samples. ROI sensitivity uncertainty enabled with shifts of -1, 0, and +1. Global spatiotemporal fit enabled with 6 control points and max_nfev of 50000, without velocity included. Temporally regularized fit enabled with max_nfev of 50000 and lambda_d of 2.0, lambda_cs of 1.0, and lambda_cs_monotonic of 2.0.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ERFC Ficks\\VIS12_GAD4_1_0P",
     "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\GAD_Run_1",
@@ -27,11 +27,11 @@
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -111.1,
     "depth_axis": "rows",
-    "roi_selection_mode": "interactive",
+    "roi_selection_mode": "manual_list",
     "manual_named_rois": [
       [
         "GAD",
-        [89, 100, 195, 222]
+        [130, 149, 284, 320]
       ]
     ],
     "save_selected_rois_json": true,

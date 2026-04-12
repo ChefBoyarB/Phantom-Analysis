@@ -1,7 +1,7 @@
 {
   "config_name": "GAD_Run_2",
-  "description": "GAD diffusion-only run 2 using manual locked ROI selection and the GAD 135 kVp template.",
-  "notes": "Finalized and accepted outputs created.",
+  "description": "GAD diffusion-only run 2 using manual locked ROI selection and the GAD 135 kVp template. Goal to determine D and Cs with no convection and pump with 1% agarose gel phantom.",
+  "notes": "Finalized and accepted outputs created.HU noise uncertainty enabled with 10 Monte Carlo samples. ROI sensitivity uncertainty enabled with shifts of -1, 0, and +1. Global spatiotemporal fit enabled with 6 control points and max_nfev of 50000, without velocity included. Temporally regularized fit enabled with max_nfev of 50000 and lambda_d of 2.0, lambda_cs of 1.0, and lambda_cs_monotonic of 2.0.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ERFC Ficks\\GAD_1_0P_2",
     "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\GAD_Run_2",
