@@ -201,9 +201,9 @@ MAP_CONFIGS = [
         "key": "local_effective_diffusivity",
         "map_path_key": "local_effective_diffusivity_csv",
         "subfolder": "secondary",
-        "title": "Local Effective Diffusivity Map",
-        "cbar_label": r"Effective diffusivity (mm$^2$/s)",
-        "line_value_label": r"Effective diffusivity (mm$^2$/s)",
+        "title": "Local Effective Diffusivity",
+        "cbar_label": r"Local effective diffusivity, $D_{eff}$ (mm$^2$/s)",
+        "line_value_label": r"Local effective diffusivity, $D_{eff}$ (mm$^2$/s)",
         "out_stem": "local_effective_diffusivity",
         "nonnegative": True,
     },
@@ -873,6 +873,12 @@ def validate_and_resolve_config(config: Dict[str, Any], config_path: Path) -> Di
     resolved["robust_color_limits"] = bool(config.get("robust_color_limits", ROBUST_COLOR_LIMITS_DEFAULT))
     resolved["lower_percentile"] = float(config.get("lower_percentile", LOWER_PERCENTILE_DEFAULT))
     resolved["upper_percentile"] = float(config.get("upper_percentile", UPPER_PERCENTILE_DEFAULT))
+    raw_map_color_limits = config.get("map_color_limits", {}) or {}
+    if not isinstance(raw_map_color_limits, dict):
+        raise ValueError("map_color_limits must be a JSON object mapping map keys to {vmin, vmax} objects.")
+    raw_map_display_trim_rows = config.get("map_display_trim_rows", {}) or {}
+    if not isinstance(raw_map_display_trim_rows, dict):
+        raise ValueError("map_display_trim_rows must be a JSON object mapping map keys to {bottom_rows} objects.")
     resolved["profile_y_pad_mm"] = float(config.get("profile_y_pad_mm", PROFILE_Y_PAD_MM_DEFAULT))
     resolved["profile_fixed_roi_fill_alpha"] = float(
         config.get("profile_fixed_roi_fill_alpha", PROFILE_FIXED_ROI_FILL_ALPHA_DEFAULT)
@@ -891,6 +897,43 @@ def validate_and_resolve_config(config: Dict[str, Any], config_path: Path) -> Di
     if resolved["target_time_map_key"] not in requested_map_keys:
         raise ValueError("target_time_map_key must also be included in map_keys.")
     resolved["map_specs"] = [map_spec_by_key[key] for key in requested_map_keys]
+    invalid_color_limit_keys = [key for key in raw_map_color_limits.keys() if key not in map_spec_by_key]
+    if invalid_color_limit_keys:
+        raise ValueError(f"Unknown map_color_limits keys in config: {invalid_color_limit_keys}")
+    invalid_trim_keys = [key for key in raw_map_display_trim_rows.keys() if key not in map_spec_by_key]
+    if invalid_trim_keys:
+        raise ValueError(f"Unknown map_display_trim_rows keys in config: {invalid_trim_keys}")
+    resolved_map_color_limits: Dict[str, Dict[str, float]] = {}
+    for map_key, limits in raw_map_color_limits.items():
+        if limits in (None, {}):
+            continue
+        if not isinstance(limits, dict):
+            raise ValueError(f"map_color_limits['{map_key}'] must be an object with optional vmin/vmax.")
+        parsed_limits: Dict[str, float] = {}
+        if limits.get("vmin") is not None:
+            parsed_limits["vmin"] = float(limits["vmin"])
+        if limits.get("vmax") is not None:
+            parsed_limits["vmax"] = float(limits["vmax"])
+        if "vmin" in parsed_limits and "vmax" in parsed_limits and parsed_limits["vmin"] >= parsed_limits["vmax"]:
+            raise ValueError(f"map_color_limits['{map_key}'] must satisfy vmin < vmax.")
+        if parsed_limits:
+            resolved_map_color_limits[map_key] = parsed_limits
+    resolved["map_color_limits"] = resolved_map_color_limits
+    resolved_map_display_trim_rows: Dict[str, Dict[str, int]] = {}
+    for map_key, trim_spec in raw_map_display_trim_rows.items():
+        if trim_spec in (None, {}):
+            continue
+        if not isinstance(trim_spec, dict):
+            raise ValueError(f"map_display_trim_rows['{map_key}'] must be an object with optional bottom_rows.")
+        parsed_trim: Dict[str, int] = {}
+        if trim_spec.get("bottom_rows") is not None:
+            bottom_rows = int(trim_spec["bottom_rows"])
+            if bottom_rows < 0:
+                raise ValueError(f"map_display_trim_rows['{map_key}'].bottom_rows must be >= 0.")
+            parsed_trim["bottom_rows"] = bottom_rows
+        if parsed_trim:
+            resolved_map_display_trim_rows[map_key] = parsed_trim
+    resolved["map_display_trim_rows"] = resolved_map_display_trim_rows
 
     tracers_resolved = []
     for tracer_index, tracer_cfg in enumerate(config["tracers"]):
@@ -1245,6 +1288,25 @@ def save_matrix_csv(
     return str(out_path)
 
 
+def apply_bottom_row_trim_2d(values: np.ndarray, bottom_rows: int) -> np.ndarray:
+    arr = np.asarray(values, dtype=float).copy()
+    if bottom_rows > 0 and arr.ndim == 2:
+        n_depth = arr.shape[1]
+        trim = min(bottom_rows, n_depth)
+        if trim > 0:
+            arr[:, -trim:] = np.nan
+    return arr
+
+
+def apply_bottom_row_trim_1d(values: np.ndarray, bottom_rows: int) -> np.ndarray:
+    arr = np.asarray(values, dtype=float).copy()
+    if bottom_rows > 0 and arr.ndim == 1:
+        trim = min(bottom_rows, arr.size)
+        if trim > 0:
+            arr[-trim:] = np.nan
+    return arr
+
+
 def build_local_d_post_window_products(
     samples: Sequence[SampleData],
     time_grid: np.ndarray,
@@ -1315,11 +1377,22 @@ def save_local_d_supplemental_outputs(
     plot_depth_zero_at_top: bool,
     rmse_threshold: float,
     window_info: Dict[str, Any],
+    color_limit_override: Optional[Dict[str, float]] = None,
+    display_trim_override: Optional[Dict[str, int]] = None,
 ) -> Dict[str, Any]:
     output_paths: Dict[str, Any] = {"figures": [], "csvs": []}
     subfolder = "secondary"
-    arrays = [products_by_tracer[tracer_name]["masked_mean_map"] for tracer_name in tracer_order]
+    bottom_rows = int((display_trim_override or {}).get("bottom_rows", 0))
+    arrays = [
+        apply_bottom_row_trim_2d(products_by_tracer[tracer_name]["masked_mean_map"], bottom_rows)
+        for tracer_name in tracer_order
+    ]
     vmin, vmax = get_color_limits(arrays, nonnegative=True, robust=True, lower_pct=2.0, upper_pct=98.0)
+    if color_limit_override:
+        if color_limit_override.get("vmin") is not None:
+            vmin = float(color_limit_override["vmin"])
+        if color_limit_override.get("vmax") is not None:
+            vmax = float(color_limit_override["vmax"])
     time_grid_window = products_by_tracer[tracer_order[0]]["time_grid_window"]
 
     fig, axes = plt.subplots(1, len(tracer_order), figsize=(5.9 * len(tracer_order), 5.6), constrained_layout=True)
@@ -1330,7 +1403,8 @@ def save_local_d_supplemental_outputs(
     last_im = None
     for ax, tracer_name in zip(axes, tracer_order):
         panel = products_by_tracer[tracer_name]
-        masked_map = np.ma.masked_invalid(panel["masked_mean_map"])
+        display_masked_mean = apply_bottom_row_trim_2d(panel["masked_mean_map"], bottom_rows)
+        masked_map = np.ma.masked_invalid(display_masked_mean)
         last_im = ax.imshow(
             masked_map.T,
             aspect="auto",
@@ -1340,18 +1414,17 @@ def save_local_d_supplemental_outputs(
             vmax=vmax,
             cmap=cmap,
         )
-        ax.set_title(f"{tracer_labels[tracer_name]}\npost-5 min masked mean")
+        ax.set_title(f"{tracer_labels[tracer_name]}\npost-5 min mean")
         ax.set_xlabel("Time (min)")
         ax.set_ylabel("Depth (mm)")
         if plot_depth_zero_at_top:
             ax.invert_yaxis()
     if last_im is not None:
         cbar = fig.colorbar(last_im, ax=np.ravel(axes).tolist(), shrink=0.95)
-        cbar.set_label(r"Local fitted $D_{eff}$ (mm$^2$/s)")
-    rmse_text = "n/a" if not np.isfinite(rmse_threshold) else f"{rmse_threshold:.3g}"
+        cbar.set_label(r"Local effective diffusivity, $D_{eff}$ (mm$^2$/s)")
     fig.suptitle(
         f"{figure_title}: Local Effective Diffusivity\n"
-        f"Post-5 min masked mean by tracer; masked if bound-hit or local-fit RMSE > {rmse_text}",
+        f"Post-5 min mean over the reliable depth range",
         fontsize=14,
     )
     out_path = save_plot(fig, out_folder, subfolder, "local_effective_diffusivity_post5_masked_mean_by_tracer.png")
@@ -1359,6 +1432,8 @@ def save_local_d_supplemental_outputs(
 
     support_arrays = [products_by_tracer[tracer_name]["support_fraction_map"] for tracer_name in tracer_order]
     rmse_arrays = [products_by_tracer[tracer_name]["mean_rmse_map"] for tracer_name in tracer_order]
+    support_arrays = [apply_bottom_row_trim_2d(arr, bottom_rows) for arr in support_arrays]
+    rmse_arrays = [apply_bottom_row_trim_2d(arr, bottom_rows) for arr in rmse_arrays]
     rmse_vmin, rmse_vmax = get_color_limits(rmse_arrays, nonnegative=True, robust=True, lower_pct=2.0, upper_pct=98.0)
     fig, axes = plt.subplots(2, len(tracer_order), figsize=(5.9 * len(tracer_order), 8.2), constrained_layout=True)
     if len(tracer_order) == 1:
@@ -1367,11 +1442,13 @@ def save_local_d_supplemental_outputs(
     rmse_im = None
     for col_idx, tracer_name in enumerate(tracer_order):
         panel = products_by_tracer[tracer_name]
+        display_support = apply_bottom_row_trim_2d(panel["support_fraction_map"], bottom_rows)
+        display_rmse = apply_bottom_row_trim_2d(panel["mean_rmse_map"], bottom_rows)
         ax_support = axes[0, col_idx]
         ax_rmse = axes[1, col_idx]
 
         support_im = ax_support.imshow(
-            np.asarray(panel["support_fraction_map"], dtype=float).T,
+            np.asarray(display_support, dtype=float).T,
             aspect="auto",
             extent=[float(time_grid_window[0]), float(time_grid_window[-1]), float(depth_grid[0]), float(depth_grid[-1])],
             origin="lower",
@@ -1379,12 +1456,12 @@ def save_local_d_supplemental_outputs(
             vmax=1.0,
             cmap="viridis",
         )
-        ax_support.set_title(f"{tracer_labels[tracer_name]}\nreliable support fraction")
+        ax_support.set_title(f"{tracer_labels[tracer_name]}\nsupport fraction")
         ax_support.set_xlabel("Time (min)")
         ax_support.set_ylabel("Depth (mm)")
 
         rmse_im = ax_rmse.imshow(
-            np.ma.masked_invalid(panel["mean_rmse_map"]).T,
+            np.ma.masked_invalid(display_rmse).T,
             aspect="auto",
             extent=[float(time_grid_window[0]), float(time_grid_window[-1]), float(depth_grid[0]), float(depth_grid[-1])],
             origin="lower",
@@ -1402,13 +1479,13 @@ def save_local_d_supplemental_outputs(
 
     if support_im is not None:
         cbar_support = fig.colorbar(support_im, ax=axes[0, :].ravel().tolist(), shrink=0.88)
-        cbar_support.set_label("Reliable support fraction")
+        cbar_support.set_label("Replicate support fraction")
     if rmse_im is not None:
         cbar_rmse = fig.colorbar(rmse_im, ax=axes[1, :].ravel().tolist(), shrink=0.88)
         cbar_rmse.set_label("Local fit RMSE (mg/mL)")
     fig.suptitle(
-        f"{figure_title}: Local Effective Diffusivity QC\n"
-        f"Top: fraction of replicate samples passing the reliability mask; bottom: mean local-fit RMSE",
+        f"{figure_title}: Local Effective Diffusivity Supplementary QC\n"
+        f"Top: replicate support fraction; bottom: mean local-fit RMSE",
         fontsize=14,
     )
     out_path = save_plot(fig, out_folder, subfolder, "local_effective_diffusivity_post5_qc_by_tracer.png")
@@ -1416,8 +1493,8 @@ def save_local_d_supplemental_outputs(
 
     ratio_tracer_a = "GAD" if "GAD" in products_by_tracer else tracer_order[0]
     ratio_tracer_b = "VIS320" if "VIS320" in products_by_tracer else tracer_order[1]
-    map_a = np.asarray(products_by_tracer[ratio_tracer_a]["masked_mean_map"], dtype=float)
-    map_b = np.asarray(products_by_tracer[ratio_tracer_b]["masked_mean_map"], dtype=float)
+    map_a = apply_bottom_row_trim_2d(products_by_tracer[ratio_tracer_a]["masked_mean_map"], bottom_rows)
+    map_b = apply_bottom_row_trim_2d(products_by_tracer[ratio_tracer_b]["masked_mean_map"], bottom_rows)
     with np.errstate(divide="ignore", invalid="ignore"):
         log2_ratio = np.log2(map_a / np.maximum(map_b, LOCAL_D_RATIO_EPS))
     finite_ratio = log2_ratio[np.isfinite(log2_ratio)]
@@ -1439,10 +1516,10 @@ def save_local_d_supplemental_outputs(
     if plot_depth_zero_at_top:
         ax.invert_yaxis()
     cbar = fig.colorbar(im, ax=ax, shrink=0.92)
-    cbar.set_label(f"log2 ratio of local fitted $D_{{eff}}$")
+    cbar.set_label(f"log2({tracer_labels[ratio_tracer_a]} / {tracer_labels[ratio_tracer_b]})")
     fig.suptitle(
-        f"{figure_title}: Local Effective Diffusivity Ratio\n"
-        f"Post-5 min masked mean; positive values indicate {tracer_labels[ratio_tracer_a]} > {tracer_labels[ratio_tracer_b]}",
+        f"{figure_title}: Relative Local Effective Diffusivity\n"
+        f"log2({tracer_labels[ratio_tracer_a]} / {tracer_labels[ratio_tracer_b]}); positive values indicate higher $D_{{eff}}$ for {tracer_labels[ratio_tracer_a]}",
         fontsize=14,
     )
     out_path = save_plot(fig, out_folder, subfolder, "local_effective_diffusivity_post5_log2_ratio_gad_over_vis.png")
@@ -1622,8 +1699,11 @@ def save_heatmap_figure(
     robust_color_limits: bool,
     lower_percentile: float,
     upper_percentile: float,
+    color_limit_override: Optional[Dict[str, float]] = None,
+    display_trim_override: Optional[Dict[str, int]] = None,
 ) -> str:
-    arrays = [aggregated_maps[tracer_name]["map"] for tracer_name in tracer_order]
+    bottom_rows = int((display_trim_override or {}).get("bottom_rows", 0))
+    arrays = [apply_bottom_row_trim_2d(aggregated_maps[tracer_name]["map"], bottom_rows) for tracer_name in tracer_order]
     vmin, vmax = get_color_limits(
         arrays,
         nonnegative=bool(map_spec.get("nonnegative", False)),
@@ -1631,6 +1711,11 @@ def save_heatmap_figure(
         lower_pct=lower_percentile,
         upper_pct=upper_percentile,
     )
+    if color_limit_override:
+        if color_limit_override.get("vmin") is not None:
+            vmin = float(color_limit_override["vmin"])
+        if color_limit_override.get("vmax") is not None:
+            vmax = float(color_limit_override["vmax"])
 
     fig, axes = plt.subplots(1, len(tracer_order), figsize=(5.6 * len(tracer_order), 5.5), constrained_layout=True)
     if len(tracer_order) == 1:
@@ -1641,7 +1726,8 @@ def save_heatmap_figure(
     last_im = None
     for ax, tracer_name in zip(axes, tracer_order):
         panel = aggregated_maps[tracer_name]
-        masked_map = np.ma.masked_invalid(panel["map"])
+        display_map = apply_bottom_row_trim_2d(panel["map"], bottom_rows)
+        masked_map = np.ma.masked_invalid(display_map)
         last_im = ax.imshow(
             masked_map.T,
             aspect="auto",
@@ -1687,6 +1773,7 @@ def save_target_profile_figure(
     ylims: Tuple[float, float],
     z_value: float,
     fixed_roi_fill_alpha: float,
+    display_trim_override: Optional[Dict[str, int]] = None,
 ) -> Optional[str]:
     n_panels = len(target_times)
     fig, axes = plt.subplots(n_panels, 1, figsize=(10, max(4.0 * n_panels, 7.0)), sharex=True, sharey=True)
@@ -1694,6 +1781,7 @@ def save_target_profile_figure(
         axes = [axes]
     panel_names = build_panel_names(n_panels)
     any_band = False
+    bottom_rows = int((display_trim_override or {}).get("bottom_rows", 0))
 
     for ax, panel_name, target_time in zip(axes, panel_names, target_times):
         tracer_panel_data = {}
@@ -1712,9 +1800,10 @@ def save_target_profile_figure(
             style = tracer_styles[tracer_name]
 
             for sample_curve in panel_data["sample_curves"]:
+                sample_values = apply_bottom_row_trim_1d(sample_curve["values"], bottom_rows)
                 ax.plot(
                     sample_curve["depth"],
-                    sample_curve["values"],
+                    sample_values,
                     color=style["color"],
                     linewidth=SAMPLE_LINEWIDTH,
                     alpha=SAMPLE_LINE_ALPHA,
@@ -1722,17 +1811,20 @@ def save_target_profile_figure(
 
             if panel_data["band_low"] is not None and panel_data["band_high"] is not None:
                 any_band = True
+                band_low = apply_bottom_row_trim_1d(panel_data["band_low"], bottom_rows)
+                band_high = apply_bottom_row_trim_1d(panel_data["band_high"], bottom_rows)
                 ax.fill_between(
                     panel_data["depth"],
-                    panel_data["band_low"],
-                    panel_data["band_high"],
+                    band_low,
+                    band_high,
                     color=style["color"],
                     alpha=fixed_roi_fill_alpha if mode == "fixed_roi_95ci" else 0.10,
                 )
 
+            mean_values = apply_bottom_row_trim_1d(panel_data["mean_values"], bottom_rows)
             ax.plot(
                 panel_data["depth"],
-                panel_data["mean_values"],
+                mean_values,
                 color=style["color"],
                 linewidth=CENTER_LINEWIDTH,
                 label=f"{tracer_labels[tracer_name]} mean (n={panel_data['sample_count']})",
@@ -2452,6 +2544,8 @@ def main() -> int:
             robust_color_limits=config["robust_color_limits"],
             lower_percentile=config["lower_percentile"],
             upper_percentile=config["upper_percentile"],
+            color_limit_override=config.get("map_color_limits", {}).get(map_spec["key"]),
+            display_trim_override=config.get("map_display_trim_rows", {}).get(map_spec["key"]),
         )
         ylims = build_map_profile_ylims(all_samples, map_spec["key"], z_value=config["profile_fixed_roi_z"])
         line_outputs = []
@@ -2472,6 +2566,7 @@ def main() -> int:
                 ylims=ylims,
                 z_value=config["profile_fixed_roi_z"],
                 fixed_roi_fill_alpha=config["profile_fixed_roi_fill_alpha"],
+                display_trim_override=config.get("map_display_trim_rows", {}).get(map_spec["key"]),
             )
             if out_path is not None:
                 line_outputs.append(out_path)
@@ -2512,6 +2607,8 @@ def main() -> int:
                 plot_depth_zero_at_top=config["plot_depth_zero_at_top"],
                 rmse_threshold=local_d_rmse_threshold,
                 window_info=local_d_window,
+                color_limit_override=config.get("map_color_limits", {}).get(LOCAL_D_MAP_KEY),
+                display_trim_override=config.get("map_display_trim_rows", {}).get(LOCAL_D_MAP_KEY),
             )
             figure_outputs.setdefault(LOCAL_D_MAP_KEY, {})["supplemental_outputs"] = local_d_supplement_outputs
 
