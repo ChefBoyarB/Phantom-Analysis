@@ -7,6 +7,7 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from matplotlib import colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -25,6 +26,19 @@ UPPER_PERCENTILE_DEFAULT = 98.0
 PROFILE_Y_PAD_MM_DEFAULT = 0.15
 PROFILE_FIXED_ROI_FILL_ALPHA_DEFAULT = 0.14
 PROFILE_FIXED_ROI_Z_DEFAULT = 1.96
+FIGURE_LEGEND_Y = 0.975
+FIGURE_SUPTITLE_Y = 1.01
+FIGURE_TOP_RECT = 0.84
+LEGEND_BORDER_AXES_PAD = 1.2
+LOCAL_D_MAP_KEY = "local_effective_diffusivity"
+LOCAL_D_RMSE_PATH_KEY = "local_effective_fit_rmse_csv"
+LOCAL_D_BOUND_LO = 1e-6
+LOCAL_D_BOUND_HI = 0.01
+LOCAL_D_BOUND_RTOL = 1e-6
+LOCAL_D_BOUND_ATOL = 1e-10
+LOCAL_D_RMSE_IQR_MULT = 1.5
+LOCAL_D_DEFAULT_WINDOW_MIN = 5.0
+LOCAL_D_RATIO_EPS = 1e-12
 
 CENTER_LINEWIDTH = 2.3
 SAMPLE_LINEWIDTH = 1.1
@@ -231,6 +245,7 @@ class SampleData:
     times: np.ndarray
     depth: np.ndarray
     maps: Dict[str, MapData]
+    local_effective_fit_rmse_map: Optional[np.ndarray]
     audit_info: Dict[str, Any]
 
 
@@ -649,6 +664,7 @@ def build_map_rel_paths(run_rel: str, roi_folder: str) -> Dict[str, str]:
         "temporally_regularized_fitted_profiles_csv": f"{base}/CSVs_Profiles/temporally_regularized_fitted_profiles_depth_vs_time.csv",
         "temporally_regularized_flux_magnitude_csv": f"{base}/CSVs_Diffusion/temporally_regularized_diffusive_flux_magnitude_map.csv",
         "local_effective_diffusivity_csv": f"{base}/CSVs_Diffusion/local_effective_diffusivity_map.csv",
+        "local_effective_fit_rmse_csv": f"{base}/CSVs_Diffusion/local_effective_fit_rmse_map.csv",
         "fitted_profiles_fit_std_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_std_depth_vs_time.csv",
         "fitted_profiles_hu_noise_std_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_hu_noise_std_depth_vs_time.csv",
         "fitted_profiles_roi_sensitivity_std_csv": f"{base}/CSVs_Uncertainty/fitted_profiles_roi_sensitivity_std_depth_vs_time.csv",
@@ -693,6 +709,7 @@ def build_map_abs_paths(run_path: str, roi_folder: str) -> Dict[str, str]:
         "temporally_regularized_fitted_profiles_csv": str(roi_dir / "CSVs_Profiles" / "temporally_regularized_fitted_profiles_depth_vs_time.csv"),
         "temporally_regularized_flux_magnitude_csv": str(roi_dir / "CSVs_Diffusion" / "temporally_regularized_diffusive_flux_magnitude_map.csv"),
         "local_effective_diffusivity_csv": str(roi_dir / "CSVs_Diffusion" / "local_effective_diffusivity_map.csv"),
+        "local_effective_fit_rmse_csv": str(roi_dir / "CSVs_Diffusion" / "local_effective_fit_rmse_map.csv"),
         "fitted_profiles_fit_std_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_std_depth_vs_time.csv"),
         "fitted_profiles_hu_noise_std_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_hu_noise_std_depth_vs_time.csv"),
         "fitted_profiles_roi_sensitivity_std_csv": str(roi_dir / "CSVs_Uncertainty" / "fitted_profiles_roi_sensitivity_std_depth_vs_time.csv"),
@@ -1041,6 +1058,19 @@ def load_sample_data(
             "uncertainty": maps[map_spec["key"]].uncertainty_audit,
         }
 
+    local_effective_fit_rmse_map = None
+    local_effective_rmse_df = loader_optional(paths_used.get(LOCAL_D_RMSE_PATH_KEY))
+    if local_effective_rmse_df is not None:
+        local_effective_fit_rmse_map = to_numeric_2d(local_effective_rmse_df)
+        local_map_shape = maps[LOCAL_D_MAP_KEY].values.shape if LOCAL_D_MAP_KEY in maps else None
+        if local_map_shape is not None and local_effective_fit_rmse_map.shape != local_map_shape:
+            raise ValueError(
+                f"Local effective fit RMSE map for sample '{sample_cfg.get('sample_id', run_display)}' has shape "
+                f"{list(local_effective_fit_rmse_map.shape)} but expected {list(local_map_shape)}."
+            )
+    if LOCAL_D_MAP_KEY in map_audit:
+        map_audit[LOCAL_D_MAP_KEY]["has_local_fit_rmse_map"] = bool(local_effective_fit_rmse_map is not None)
+
     sample_id = sample_cfg.get("sample_id")
     if sample_id in (None, ""):
         sample_id = Path(run_display).name
@@ -1073,6 +1103,7 @@ def load_sample_data(
         times=times,
         depth=build_depth_mm(next(iter(maps.values())).values.shape[1], float(dx_value)),
         maps=maps,
+        local_effective_fit_rmse_map=local_effective_fit_rmse_map,
         audit_info=audit_info,
     )
 
@@ -1134,6 +1165,355 @@ def aggregate_tracer_map(
         "sample_count": len(samples),
         "time_ranges": time_ranges,
     }
+
+
+def resolve_local_d_window(report_windows: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    for window in report_windows:
+        if str(window.get("name", "")).strip().lower() == "post_5min":
+            return {
+                "name": str(window.get("name", "post_5min")),
+                "min_time_min": float(window.get("min_time_min")) if window.get("min_time_min") is not None else None,
+                "max_time_min": float(window.get("max_time_min")) if window.get("max_time_min") is not None else None,
+            }
+    return {
+        "name": "post_5min",
+        "min_time_min": float(LOCAL_D_DEFAULT_WINDOW_MIN),
+        "max_time_min": None,
+    }
+
+
+def time_mask_for_window(times: np.ndarray, min_time_min: Optional[float], max_time_min: Optional[float]) -> np.ndarray:
+    mask = np.isfinite(times)
+    if min_time_min is not None:
+        mask &= np.asarray(times, dtype=float) >= float(min_time_min)
+    if max_time_min is not None:
+        mask &= np.asarray(times, dtype=float) <= float(max_time_min)
+    return mask
+
+
+def local_d_bound_hits(values: np.ndarray) -> np.ndarray:
+    arr = np.asarray(values, dtype=float)
+    finite = np.isfinite(arr)
+    return finite & (
+        np.isclose(arr, LOCAL_D_BOUND_LO, rtol=LOCAL_D_BOUND_RTOL, atol=LOCAL_D_BOUND_ATOL)
+        | np.isclose(arr, LOCAL_D_BOUND_HI, rtol=LOCAL_D_BOUND_RTOL, atol=LOCAL_D_BOUND_ATOL)
+    )
+
+
+def compute_local_d_rmse_threshold(
+    samples: Sequence[SampleData],
+    min_time_min: Optional[float],
+    max_time_min: Optional[float],
+) -> float:
+    rmse_values: List[np.ndarray] = []
+    for sample in samples:
+        if sample.local_effective_fit_rmse_map is None or LOCAL_D_MAP_KEY not in sample.maps:
+            continue
+        time_mask = time_mask_for_window(sample.times, min_time_min, max_time_min)
+        row_mask = time_mask & sample.maps[LOCAL_D_MAP_KEY].valid_rows
+        if not np.any(row_mask):
+            continue
+        finite = np.asarray(sample.local_effective_fit_rmse_map[row_mask], dtype=float).ravel()
+        finite = finite[np.isfinite(finite)]
+        if finite.size:
+            rmse_values.append(finite)
+    if not rmse_values:
+        return float("nan")
+    merged = np.concatenate(rmse_values)
+    median = float(np.nanmedian(merged))
+    q1, q3 = np.nanpercentile(merged, [25.0, 75.0])
+    iqr = float(q3 - q1)
+    if np.isfinite(iqr) and iqr > 0:
+        return float(median + LOCAL_D_RMSE_IQR_MULT * iqr)
+    return float(np.nanpercentile(merged, 90.0))
+
+
+def save_matrix_csv(
+    out_folder: str,
+    subfolder: str,
+    filename: str,
+    time_grid: np.ndarray,
+    depth_grid: np.ndarray,
+    values: np.ndarray,
+) -> str:
+    folder = Path(out_folder) / subfolder
+    folder.mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame(np.asarray(values, dtype=float), columns=[f"depth_mm_{depth:.3f}" for depth in np.asarray(depth_grid, dtype=float)])
+    df.insert(0, "time_min", np.asarray(time_grid, dtype=float))
+    out_path = folder / filename
+    df.to_csv(out_path, index=False)
+    return str(out_path)
+
+
+def build_local_d_post_window_products(
+    samples: Sequence[SampleData],
+    time_grid: np.ndarray,
+    depth_grid: np.ndarray,
+    min_time_min: Optional[float],
+    max_time_min: Optional[float],
+    rmse_threshold: float,
+) -> Dict[str, Any]:
+    time_window_mask = time_mask_for_window(time_grid, min_time_min, max_time_min)
+    time_grid_window = np.asarray(time_grid, dtype=float)[time_window_mask]
+
+    masked_local_d_rows = []
+    rmse_rows = []
+    reliable_rows = []
+    bound_hit_rows = []
+
+    for sample in samples:
+        map_data = sample.maps[LOCAL_D_MAP_KEY]
+        local_d_grid = regrid_map(sample.times, sample.depth, map_data.values, time_grid, depth_grid)
+        if sample.local_effective_fit_rmse_map is not None:
+            rmse_grid = regrid_map(sample.times, sample.depth, sample.local_effective_fit_rmse_map, time_grid, depth_grid)
+        else:
+            rmse_grid = np.full_like(local_d_grid, np.nan, dtype=float)
+
+        finite_local_d = np.isfinite(local_d_grid)
+        bound_hits = local_d_bound_hits(local_d_grid)
+        rmse_bad = (
+            np.isfinite(rmse_grid)
+            & np.isfinite(rmse_threshold)
+            & (rmse_grid > float(rmse_threshold))
+        )
+        reliable = finite_local_d & ~bound_hits & ~rmse_bad
+
+        masked_local_d_rows.append(np.where(reliable, local_d_grid, np.nan)[time_window_mask])
+        rmse_rows.append(np.where(np.isfinite(rmse_grid), rmse_grid, np.nan)[time_window_mask])
+        reliable_rows.append(reliable[time_window_mask].astype(float))
+        bound_hit_rows.append(bound_hits[time_window_mask].astype(float))
+
+    masked_local_d_stack = np.stack(masked_local_d_rows, axis=0)
+    rmse_stack = np.stack(rmse_rows, axis=0)
+    reliable_stack = np.stack(reliable_rows, axis=0)
+    bound_hit_stack = np.stack(bound_hit_rows, axis=0)
+
+    masked_mean_map = nanmean_stack(masked_local_d_stack)
+    mean_rmse_map = nanmean_stack(rmse_stack)
+    support_fraction_map = np.sum(reliable_stack, axis=0) / float(len(samples))
+    bound_hit_fraction_map = np.sum(bound_hit_stack, axis=0) / float(len(samples))
+    strict_support_mask = np.sum(reliable_stack, axis=0) >= int(len(samples))
+    strict_masked_mean_map = np.where(strict_support_mask, masked_mean_map, np.nan)
+
+    return {
+        "time_grid_window": time_grid_window,
+        "masked_mean_map": strict_masked_mean_map,
+        "support_fraction_map": support_fraction_map,
+        "mean_rmse_map": mean_rmse_map,
+        "bound_hit_fraction_map": bound_hit_fraction_map,
+        "strict_support_mask": strict_support_mask,
+    }
+
+
+def save_local_d_supplemental_outputs(
+    out_folder: str,
+    figure_title: str,
+    tracer_order: Sequence[str],
+    tracer_labels: Dict[str, str],
+    products_by_tracer: Dict[str, Dict[str, Any]],
+    depth_grid: np.ndarray,
+    plot_depth_zero_at_top: bool,
+    rmse_threshold: float,
+    window_info: Dict[str, Any],
+) -> Dict[str, Any]:
+    output_paths: Dict[str, Any] = {"figures": [], "csvs": []}
+    subfolder = "secondary"
+    arrays = [products_by_tracer[tracer_name]["masked_mean_map"] for tracer_name in tracer_order]
+    vmin, vmax = get_color_limits(arrays, nonnegative=True, robust=True, lower_pct=2.0, upper_pct=98.0)
+    time_grid_window = products_by_tracer[tracer_order[0]]["time_grid_window"]
+
+    fig, axes = plt.subplots(1, len(tracer_order), figsize=(5.9 * len(tracer_order), 5.6), constrained_layout=True)
+    if len(tracer_order) == 1:
+        axes = [axes]
+    cmap = plt.cm.get_cmap("viridis").copy()
+    cmap.set_bad(color="white", alpha=0.0)
+    last_im = None
+    for ax, tracer_name in zip(axes, tracer_order):
+        panel = products_by_tracer[tracer_name]
+        masked_map = np.ma.masked_invalid(panel["masked_mean_map"])
+        last_im = ax.imshow(
+            masked_map.T,
+            aspect="auto",
+            extent=[float(time_grid_window[0]), float(time_grid_window[-1]), float(depth_grid[0]), float(depth_grid[-1])],
+            origin="lower",
+            vmin=vmin,
+            vmax=vmax,
+            cmap=cmap,
+        )
+        ax.set_title(f"{tracer_labels[tracer_name]}\npost-5 min masked mean")
+        ax.set_xlabel("Time (min)")
+        ax.set_ylabel("Depth (mm)")
+        if plot_depth_zero_at_top:
+            ax.invert_yaxis()
+    if last_im is not None:
+        cbar = fig.colorbar(last_im, ax=np.ravel(axes).tolist(), shrink=0.95)
+        cbar.set_label(r"Local fitted $D_{eff}$ (mm$^2$/s)")
+    rmse_text = "n/a" if not np.isfinite(rmse_threshold) else f"{rmse_threshold:.3g}"
+    fig.suptitle(
+        f"{figure_title}: Local Effective Diffusivity\n"
+        f"Post-5 min masked mean by tracer; masked if bound-hit or local-fit RMSE > {rmse_text}",
+        fontsize=14,
+    )
+    out_path = save_plot(fig, out_folder, subfolder, "local_effective_diffusivity_post5_masked_mean_by_tracer.png")
+    output_paths["figures"].append(out_path)
+
+    support_arrays = [products_by_tracer[tracer_name]["support_fraction_map"] for tracer_name in tracer_order]
+    rmse_arrays = [products_by_tracer[tracer_name]["mean_rmse_map"] for tracer_name in tracer_order]
+    rmse_vmin, rmse_vmax = get_color_limits(rmse_arrays, nonnegative=True, robust=True, lower_pct=2.0, upper_pct=98.0)
+    fig, axes = plt.subplots(2, len(tracer_order), figsize=(5.9 * len(tracer_order), 8.2), constrained_layout=True)
+    if len(tracer_order) == 1:
+        axes = np.asarray([[axes[0]], [axes[1]]], dtype=object)
+    support_im = None
+    rmse_im = None
+    for col_idx, tracer_name in enumerate(tracer_order):
+        panel = products_by_tracer[tracer_name]
+        ax_support = axes[0, col_idx]
+        ax_rmse = axes[1, col_idx]
+
+        support_im = ax_support.imshow(
+            np.asarray(panel["support_fraction_map"], dtype=float).T,
+            aspect="auto",
+            extent=[float(time_grid_window[0]), float(time_grid_window[-1]), float(depth_grid[0]), float(depth_grid[-1])],
+            origin="lower",
+            vmin=0.0,
+            vmax=1.0,
+            cmap="viridis",
+        )
+        ax_support.set_title(f"{tracer_labels[tracer_name]}\nreliable support fraction")
+        ax_support.set_xlabel("Time (min)")
+        ax_support.set_ylabel("Depth (mm)")
+
+        rmse_im = ax_rmse.imshow(
+            np.ma.masked_invalid(panel["mean_rmse_map"]).T,
+            aspect="auto",
+            extent=[float(time_grid_window[0]), float(time_grid_window[-1]), float(depth_grid[0]), float(depth_grid[-1])],
+            origin="lower",
+            vmin=rmse_vmin,
+            vmax=rmse_vmax,
+            cmap="magma",
+        )
+        ax_rmse.set_title(f"{tracer_labels[tracer_name]}\nmean local-fit RMSE")
+        ax_rmse.set_xlabel("Time (min)")
+        ax_rmse.set_ylabel("Depth (mm)")
+
+        if plot_depth_zero_at_top:
+            ax_support.invert_yaxis()
+            ax_rmse.invert_yaxis()
+
+    if support_im is not None:
+        cbar_support = fig.colorbar(support_im, ax=axes[0, :].ravel().tolist(), shrink=0.88)
+        cbar_support.set_label("Reliable support fraction")
+    if rmse_im is not None:
+        cbar_rmse = fig.colorbar(rmse_im, ax=axes[1, :].ravel().tolist(), shrink=0.88)
+        cbar_rmse.set_label("Local fit RMSE (mg/mL)")
+    fig.suptitle(
+        f"{figure_title}: Local Effective Diffusivity QC\n"
+        f"Top: fraction of replicate samples passing the reliability mask; bottom: mean local-fit RMSE",
+        fontsize=14,
+    )
+    out_path = save_plot(fig, out_folder, subfolder, "local_effective_diffusivity_post5_qc_by_tracer.png")
+    output_paths["figures"].append(out_path)
+
+    ratio_tracer_a = "GAD" if "GAD" in products_by_tracer else tracer_order[0]
+    ratio_tracer_b = "VIS320" if "VIS320" in products_by_tracer else tracer_order[1]
+    map_a = np.asarray(products_by_tracer[ratio_tracer_a]["masked_mean_map"], dtype=float)
+    map_b = np.asarray(products_by_tracer[ratio_tracer_b]["masked_mean_map"], dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        log2_ratio = np.log2(map_a / np.maximum(map_b, LOCAL_D_RATIO_EPS))
+    finite_ratio = log2_ratio[np.isfinite(log2_ratio)]
+    ratio_limit = float(np.nanpercentile(np.abs(finite_ratio), 98.0)) if finite_ratio.size else 1.0
+    if not np.isfinite(ratio_limit) or np.isclose(ratio_limit, 0.0):
+        ratio_limit = 1.0
+    fig, ax = plt.subplots(1, 1, figsize=(7.0, 5.6), constrained_layout=True)
+    im = ax.imshow(
+        np.ma.masked_invalid(log2_ratio).T,
+        aspect="auto",
+        extent=[float(time_grid_window[0]), float(time_grid_window[-1]), float(depth_grid[0]), float(depth_grid[-1])],
+        origin="lower",
+        cmap="coolwarm",
+        norm=mcolors.TwoSlopeNorm(vcenter=0.0, vmin=-ratio_limit, vmax=ratio_limit),
+    )
+    ax.set_title(f"log2({tracer_labels[ratio_tracer_a]} / {tracer_labels[ratio_tracer_b]})")
+    ax.set_xlabel("Time (min)")
+    ax.set_ylabel("Depth (mm)")
+    if plot_depth_zero_at_top:
+        ax.invert_yaxis()
+    cbar = fig.colorbar(im, ax=ax, shrink=0.92)
+    cbar.set_label(f"log2 ratio of local fitted $D_{{eff}}$")
+    fig.suptitle(
+        f"{figure_title}: Local Effective Diffusivity Ratio\n"
+        f"Post-5 min masked mean; positive values indicate {tracer_labels[ratio_tracer_a]} > {tracer_labels[ratio_tracer_b]}",
+        fontsize=14,
+    )
+    out_path = save_plot(fig, out_folder, subfolder, "local_effective_diffusivity_post5_log2_ratio_gad_over_vis.png")
+    output_paths["figures"].append(out_path)
+
+    for tracer_name in tracer_order:
+        panel = products_by_tracer[tracer_name]
+        safe_tracer = str(tracer_name).replace(" ", "_")
+        output_paths["csvs"].append(
+            save_matrix_csv(
+                out_folder,
+                subfolder,
+                f"local_effective_diffusivity_post5_masked_mean_{safe_tracer}.csv",
+                time_grid_window,
+                depth_grid,
+                panel["masked_mean_map"],
+            )
+        )
+        output_paths["csvs"].append(
+            save_matrix_csv(
+                out_folder,
+                subfolder,
+                f"local_effective_diffusivity_post5_support_fraction_{safe_tracer}.csv",
+                time_grid_window,
+                depth_grid,
+                panel["support_fraction_map"],
+            )
+        )
+        output_paths["csvs"].append(
+            save_matrix_csv(
+                out_folder,
+                subfolder,
+                f"local_effective_diffusivity_post5_mean_rmse_{safe_tracer}.csv",
+                time_grid_window,
+                depth_grid,
+                panel["mean_rmse_map"],
+            )
+        )
+        output_paths["csvs"].append(
+            save_matrix_csv(
+                out_folder,
+                subfolder,
+                f"local_effective_diffusivity_post5_bound_hit_fraction_{safe_tracer}.csv",
+                time_grid_window,
+                depth_grid,
+                panel["bound_hit_fraction_map"],
+            )
+        )
+
+    output_paths["csvs"].append(
+        save_matrix_csv(
+            out_folder,
+            subfolder,
+            "local_effective_diffusivity_post5_log2_ratio_gad_over_vis.csv",
+            time_grid_window,
+            depth_grid,
+            log2_ratio,
+        )
+    )
+
+    output_paths["audit"] = {
+        "window_name": window_info["name"],
+        "window_min_time_min": window_info["min_time_min"],
+        "window_max_time_min": window_info["max_time_min"],
+        "rmse_threshold": float(rmse_threshold) if np.isfinite(rmse_threshold) else float("nan"),
+        "strict_support_requires_all_replicates": True,
+        "local_d_bounds": [LOCAL_D_BOUND_LO, LOCAL_D_BOUND_HI],
+        "ratio_tracer_numerator": ratio_tracer_a,
+        "ratio_tracer_denominator": ratio_tracer_b,
+    }
+    return output_paths
 
 
 def compute_map_band(map_data: MapData, idx: int, mode: str, z_value: float) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
@@ -1210,7 +1590,7 @@ def build_panel_subtitle(tracer_panel_data: Dict[str, Dict[str, Any]], time_unit
 
 
 def save_plot(fig: plt.Figure, out_folder: str, subfolder: str, filename: str) -> str:
-    folder = Path(out_folder) / "map_comparisons" / subfolder
+    folder = Path(out_folder) / subfolder
     folder.mkdir(parents=True, exist_ok=True)
     out_path = folder / filename
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
@@ -1373,9 +1753,16 @@ def save_target_profile_figure(
 
     axes[-1].set_xlabel("Depth (mm)")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=min(4, max(2, len(labels))), bbox_to_anchor=(0.5, 0.995))
-    fig.suptitle(f"{figure_title}: {map_spec['title']}\n{line_mode_note(mode)}", y=1.02, fontsize=14)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        ncol=min(4, max(2, len(labels))),
+        bbox_to_anchor=(0.5, FIGURE_LEGEND_Y),
+        borderaxespad=LEGEND_BORDER_AXES_PAD,
+    )
+    fig.suptitle(f"{figure_title}: {map_spec['title']}\n{line_mode_note(mode)}", y=FIGURE_SUPTITLE_Y, fontsize=14)
+    fig.tight_layout(rect=[0, 0, 1, FIGURE_TOP_RECT])
     mode_suffix = next(spec[2] for spec in LINE_MODE_SPECS if spec[0] == mode)
     return save_plot(fig, out_folder, map_spec["subfolder"], f"{map_spec['out_stem']}_{mode_suffix}")
 
@@ -1942,7 +2329,7 @@ def write_tables(
     omnibus_df: pd.DataFrame,
     extra_tables: Optional[Dict[str, pd.DataFrame]] = None,
 ) -> List[str]:
-    summary_dir = Path(out_folder) / "map_comparisons" / "summaries"
+    summary_dir = Path(out_folder) / "summaries"
     summary_dir.mkdir(parents=True, exist_ok=True)
 
     outputs = []
@@ -1966,7 +2353,7 @@ def write_tables(
 
 
 def save_audit_report(out_folder: str, payload: Dict[str, Any]) -> None:
-    out_dir = Path(out_folder) / "map_comparisons" / "audit"
+    out_dir = Path(out_folder) / "audit"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     with open(out_dir / "comparison_audit.json", "w", encoding="utf-8") as handle:
@@ -2094,6 +2481,40 @@ def main() -> int:
             "ylims_used": [float(ylims[0]), float(ylims[1])],
         }
 
+    local_d_supplement_outputs: Dict[str, Any] = {}
+    if LOCAL_D_MAP_KEY in [spec["key"] for spec in map_specs]:
+        local_d_window = resolve_local_d_window(config["report_windows"])
+        local_d_rmse_threshold = compute_local_d_rmse_threshold(
+            all_samples,
+            local_d_window["min_time_min"],
+            local_d_window["max_time_min"],
+        )
+        local_d_products_by_tracer = {
+            tracer_name: build_local_d_post_window_products(
+                samples_by_tracer[tracer_name],
+                time_grid,
+                depth_grid,
+                local_d_window["min_time_min"],
+                local_d_window["max_time_min"],
+                local_d_rmse_threshold,
+            )
+            for tracer_name in tracer_order
+        }
+        first_tracer = tracer_order[0] if tracer_order else None
+        if first_tracer is not None and local_d_products_by_tracer[first_tracer]["time_grid_window"].size > 0:
+            local_d_supplement_outputs = save_local_d_supplemental_outputs(
+                out_folder=config["out_folder"],
+                figure_title=config["figure_title"],
+                tracer_order=tracer_order,
+                tracer_labels=tracer_labels,
+                products_by_tracer=local_d_products_by_tracer,
+                depth_grid=depth_grid,
+                plot_depth_zero_at_top=config["plot_depth_zero_at_top"],
+                rmse_threshold=local_d_rmse_threshold,
+                window_info=local_d_window,
+            )
+            figure_outputs.setdefault(LOCAL_D_MAP_KEY, {})["supplemental_outputs"] = local_d_supplement_outputs
+
     target_metric_rows = []
     for sample in all_samples:
         for map_spec in map_specs:
@@ -2208,12 +2629,13 @@ def main() -> int:
             for sample in all_samples
         },
         "sample_audit": {sample.sample_id: sample.audit_info for sample in all_samples},
+        "local_effective_diffusivity_supplement": local_d_supplement_outputs.get("audit", {}) if local_d_supplement_outputs else {},
         "figure_outputs": figure_outputs,
         "table_outputs": table_outputs,
     }
     save_audit_report(config["out_folder"], audit_payload)
 
-    print("Saved map comparison outputs under:", str(Path(config["out_folder"]) / "map_comparisons"))
+    print("Saved map comparison outputs under:", str(Path(config["out_folder"])))
     print("Done.")
     return 0
 

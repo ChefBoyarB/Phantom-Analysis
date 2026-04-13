@@ -54,7 +54,7 @@ GAD_FOLDER_HINT = "GAD_Swollen_No_Pressure_135kvp"
 VIS_ROI_FOLDER_HINT = "VIS_320"
 GAD_ROI_FOLDER_HINT = "GAD"
 
-OUT_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\VS Code Files\Results\Results_Paper_1\Paper_1_Comparisons"
+OUT_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\Paper_1_Results\Comparisons"
 
 # Depth spacing from run_metadata.json or your analysis settings
 VIS_DX_MM = 0.166

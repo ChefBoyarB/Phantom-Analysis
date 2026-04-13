@@ -31,6 +31,10 @@ SAMPLE_LINE_ALPHA = 0.20
 MEASURED_MARKER_SIZE = 18
 MEASURED_SAMPLE_ALPHA = 0.65
 Z95 = 1.96
+FIGURE_LEGEND_Y = 0.975
+FIGURE_SUPTITLE_Y = 1.01
+FIGURE_TOP_RECT = 0.84
+LEGEND_BORDER_AXES_PAD = 1.2
 
 MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*", "<", ">"]
 DEFAULT_COLORS = [
@@ -621,9 +625,16 @@ def save_profile_figure(
 
     axes[-1].set_xlabel("Depth (mm)")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=min(4, max(2, len(labels))), bbox_to_anchor=(0.5, 0.995))
-    fig.suptitle(f"{figure_title}\n{build_uncertainty_note(mode)}", y=1.02, fontsize=14)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        ncol=min(4, max(2, len(labels))),
+        bbox_to_anchor=(0.5, FIGURE_LEGEND_Y),
+        borderaxespad=LEGEND_BORDER_AXES_PAD,
+    )
+    fig.suptitle(f"{figure_title}\n{build_uncertainty_note(mode)}", y=FIGURE_SUPTITLE_Y, fontsize=14)
+    fig.tight_layout(rect=[0, 0, 1, FIGURE_TOP_RECT])
     return save_plot(fig, out_folder, subfolder, out_name)
 
 

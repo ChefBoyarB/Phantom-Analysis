@@ -47,7 +47,7 @@ GAD_ROI_FOLDER = "GAD"
 VIS_FOLDER_HINT = "VIS320_Swollen_No_Pressure_135kvp"
 GAD_FOLDER_HINT = "GAD_Swollen_No_Pressure_135kvp"
 
-OUT_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\VS Code Files\Results\Results_Paper_1\Paper_1_Comparisons"
+OUT_FOLDER = r"C:\Users\brend\OneDrive - University of Toronto\Paper_1_Results\Comparisons\compare_maps"
 
 VIS_DX_MM = 0.166
 GAD_DX_MM = 0.166
@@ -168,7 +168,7 @@ def ensure_dir(path: str):
 
 
 def save_audit_report(out_folder: str, payload: dict):
-    out_dir = Path(out_folder) / "map_comparisons" / "audit"
+    out_dir = Path(out_folder) / "audit"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     with open(out_dir / "comparison_audit.json", "w", encoding="utf-8") as f:
@@ -687,10 +687,10 @@ def run_map_comparison(
         "fixed_roi_uncertainty_requested": bool(vis_fixed_roi_std_map is not None or gad_fixed_roi_std_map is not None),
         "fixed_roi_uncertainty_used": bool(wrote_fixed_roi),
         "outputs_written": [
-            str(Path("map_comparisons") / out_dir.name / f"{out_stem}_full_map_side_by_side.png"),
-            str(Path("map_comparisons") / out_dir.name / f"{out_stem}_early_mid_late_line_comparison.png"),
+            str(Path(out_dir.name) / f"{out_stem}_full_map_side_by_side.png"),
+            str(Path(out_dir.name) / f"{out_stem}_early_mid_late_line_comparison.png"),
         ] + (
-            [str(Path("map_comparisons") / out_dir.name / f"{out_stem}_early_mid_late_line_comparison_fixedROI_95CI.png")]
+            [str(Path(out_dir.name) / f"{out_stem}_early_mid_late_line_comparison_fixedROI_95CI.png")]
             if wrote_fixed_roi else []
         ),
     }
@@ -700,7 +700,7 @@ def run_map_comparison(
 # MAIN
 # ============================================================
 def main():
-    root_out = Path(OUT_FOLDER) / "map_comparisons"
+    root_out = Path(OUT_FOLDER)
     ensure_dir(str(root_out))
 
     vis_run_rel, vis_selection_mode = resolve_run_folder(RESULTS_SOURCE, VIS_RUN_REL, VIS_FOLDER_HINT, "VIS")

@@ -5,7 +5,7 @@
     "ROI folder and depth spacing are inferred from run_metadata.json when available.",
     "Target times are set within the overlapping usable window across the four chosen runs."
   ],
-  "out_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Compare_Maps_VIS320_vs_GAD_n2",
+  "out_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Comparisons\\compare_maps",
   "figure_title": "Map Comparison: VIS 320 vs GAD (n=2 per tracer)",
   "target_times_min": [
     0.25,
