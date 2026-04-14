@@ -35,7 +35,7 @@ Use this to compare concentration, flux, and diffusivity maps across multiple tr
 Run from the repo root:
 
 ```powershell
-& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Maps.py --config configs\comparison\map_comparison_vis320_gad_n2.json
+& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Maps.py --config configs\comparison\map_comparison_vis320_gad_n3.json
 ```
 
 ### Other comparison scripts
@@ -282,7 +282,7 @@ Use this after the per-dataset outputs already exist in `Data_Analysis/`.
 
 The ready-to-edit example config is:
 
-- `configs/comparison/map_comparison_vis320_gad_n2.json`
+- `configs/comparison/map_comparison_vis320_gad_n3.json`
 
 The top-level structure mirrors the profile-fit comparison:
 
