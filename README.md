@@ -43,7 +43,7 @@ That README explains:
 Current example comparison configs include:
 
 - `configs/comparison/profile_fit_examples_vis_vs_gad.json`
-- `configs/comparison/profile_fit_examples_vis320_gad_n2.json`
+- `configs/comparison/profile_fit_examples_vis320_gad_n3.json`
 
 ### `Table_Generation/`
 Contains scripts that generate support tables and manuscript-style outputs from completed analysis results.
@@ -83,7 +83,7 @@ For new dataset analysis work:
 
 For example, the current four-run VIS-vs-GAD profile-fit comparison uses:
 
-- `configs/comparison/profile_fit_examples_vis320_gad_n2.json`
+- `configs/comparison/profile_fit_examples_vis320_gad_n3.json`
 
 ## Notes
 

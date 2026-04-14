@@ -1,15 +1,16 @@
 {
-  "description": "Profile-fit comparison config for the selected VIS320 and GAD diffusion-only runs (n=2 per tracer).",
+  "description": "Profile-fit comparison config for the selected VIS320 and GAD diffusion-only runs (n=3 per tracer).",
   "notes": [
-    "Uses VIS320_Run_1, VIS320_Run_2, GAD_Run_1, and GAD_Run_2.",
-    "Per-sample dx_mm overrides are included explicitly; all four selected runs use 0.166 mm based on run_metadata.json.",
-    "Target times are set within the overlapping usable window across the four chosen runs."
+    "Uses VIS320_Run_1, VIS320_Run_2, VIS320_Run_3, GAD_Run_1, GAD_Run_2, and GAD_Run_3.",
+    "Per-sample dx_mm overrides are included explicitly; all six selected runs use 0.166 mm based on run_metadata.json.",
+    "Target times are set within the overlapping usable window across the six chosen runs."
   ],
   "results_source": "C:/Users/brend/OneDrive - University of Toronto/Paper_1_Results/Diffusion_Only_Results",
   "out_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Comparisons",
-  "figure_title": "Profile Fit Comparison: VIS 320 vs GAD (n=2 per tracer)",
+  "figure_title": "Profile Fit Comparison: VIS 320 vs GAD (n=3 per tracer)",
   "target_times_min": [
-    0.25,
+    0.75,
+    5.0,
     10.0,
     20.0
   ],
@@ -46,6 +47,11 @@
           "sample_id": "VIS320_02",
           "run_rel": "VIS320_Run_2",
           "dx_mm": 0.166
+        },
+        {
+          "sample_id": "VIS320_03",
+          "run_rel": "VIS320_Run_3",
+          "dx_mm": 0.166
         }
       ]
     },
@@ -65,6 +71,11 @@
         {
           "sample_id": "GAD_02",
           "run_rel": "GAD_Run_2",
+          "dx_mm": 0.166
+        },
+        {
+          "sample_id": "GAD_03",
+          "run_rel": "GAD_Run_3",
           "dx_mm": 0.166
         }
       ]

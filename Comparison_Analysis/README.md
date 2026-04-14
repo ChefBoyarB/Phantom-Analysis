@@ -18,10 +18,10 @@ Run from the repo root:
 & '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Profile_Fit_Examples.py --config configs\comparison\profile_fit_examples_vis_vs_gad.json
 ```
 
-Another ready-to-edit example for the current `n = 2` VIS-vs-GAD comparison workflow is:
+Another ready-to-edit example for the current `n = 3` VIS-vs-GAD comparison workflow is:
 
 ```powershell
-& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Profile_Fit_Examples.py --config configs\comparison\profile_fit_examples_vis320_gad_n2.json
+& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Profile_Fit_Examples.py --config configs\comparison\profile_fit_examples_vis320_gad_n3.json
 ```
 
 ### `Compare_Maps.py`
@@ -59,7 +59,7 @@ The normal flow is:
 The example config is:
 
 - `configs/comparison/profile_fit_examples_vis_vs_gad.json`
-- `configs/comparison/profile_fit_examples_vis320_gad_n2.json`
+- `configs/comparison/profile_fit_examples_vis320_gad_n3.json`
 
 Important top-level fields:
 
