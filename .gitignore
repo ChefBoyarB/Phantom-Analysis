@@ -15,5 +15,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-Testing/
+Testing/*
+!Testing/README.md
 Comparison_Analysis/__codex_patch_test__.txt

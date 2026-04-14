@@ -14,7 +14,7 @@ Use this for **normal work going forward**.
 Run from the repo root:
 
 ```powershell
-& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\Old\vis320_no_pressure_135kvp.json
+& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\old\vis320_no_pressure_135kvp.json
 ```
 
 ### 2. `Analysis_Main_Legacy.py`
@@ -44,19 +44,27 @@ Use the **config-first** workflow for new datasets.
 
 Current config folders:
 
-- `configs/analysis/Old/`
-- `configs/analysis/Diffusion/`
+- `configs/analysis/old/`
+- `configs/analysis/diffusion/`
 
 Current example configs include:
 
-- `configs/analysis/Old/gad_pressure_135kvp.json`
-- `configs/analysis/Old/gad_no_pressure_135kvp.json`
-- `configs/analysis/Old/vis320_no_pressure_135kvp.json`
-- `configs/analysis/Diffusion/GAD_Run_1.json`
-- `configs/analysis/Diffusion/GAD_Run_2.json`
-- `configs/analysis/Diffusion/VIS320_Run_1.json`
-- `configs/analysis/Diffusion/VIS320_Run_2.json`
-- `configs/analysis/Diffusion/VIS320_Run_3.json`
+- `configs/analysis/old/gad_pressure_135kvp.json`
+- `configs/analysis/old/gad_no_pressure_135kvp.json`
+- `configs/analysis/old/vis320_no_pressure_135kvp.json`
+- `configs/analysis/diffusion/GAD_Run_1.json`
+- `configs/analysis/diffusion/GAD_Run_2.json`
+- `configs/analysis/diffusion/GAD_Run_3.json`
+- `configs/analysis/diffusion/VIS320_Run_1.json`
+- `configs/analysis/diffusion/VIS320_Run_2.json`
+- `configs/analysis/diffusion/VIS320_Run_3.json`
+
+Temporary comparison-only sample configs also live under `configs/analysis/diffusion/`:
+
+- `configs/analysis/diffusion/GAD_Run_2_shift_down1_sample.json`
+- `configs/analysis/diffusion/VIS320_Run_2_shift_up1_sample.json`
+
+Those temporary sample configs are useful for isolated comparison checks, but they should not be treated as canonical run templates.
 
 For a new run:
 
@@ -67,8 +75,8 @@ For a new run:
 
 Example:
 
-- copy `configs/analysis/Old/vis320_no_pressure_135kvp.json`
-- rename it to something like `configs/analysis/Diffusion/VIS320_Run_4.json`
+- copy `configs/analysis/old/vis320_no_pressure_135kvp.json`
+- rename it to something like `configs/analysis/diffusion/VIS320_Run_4.json`
 
 ### Step 2. Edit the config file
 
@@ -93,7 +101,7 @@ You do **not** need to change every field for every dataset.
 ### Step 3. Run the config-first launcher
 
 ```powershell
-& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\Diffusion\your_new_config.json
+& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\diffusion\your_new_config.json
 ```
 
 ## Legacy Workflow
@@ -186,7 +194,7 @@ When a run finishes, the most useful files for checking whether two runs match a
 Use this for normal runs:
 
 ```powershell
-& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\Diffusion\some_config.json
+& '.\.venv\Scripts\python.exe' Data_Analysis\Analysis_Main_Config_First.py --config configs\analysis\diffusion\some_config.json
 ```
 
 Use this only for old-style manual runs:

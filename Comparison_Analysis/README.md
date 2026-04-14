@@ -51,12 +51,12 @@ The normal flow is:
 
 1. Run `Analysis_Main_Config_First.py` once per dataset
 2. Keep each dataset output folder
-3. Add those output folders to a comparison config in `configs/comparison/`
+3. Add those output folders, or a shared `results_source` plus per-sample `run_rel`, to a comparison config in `configs/comparison/`
 4. Run `Compare_Profile_Fit_Examples.py --config ...`
 
 ## How The Config Works
 
-The example config is:
+Example profile-fit configs are:
 
 - `configs/comparison/profile_fit_examples_vis_vs_gad.json`
 - `configs/comparison/profile_fit_examples_vis320_gad_n3.json`
@@ -280,18 +280,25 @@ Use this for the profile-fit comparison workflow:
 
 Use this after the per-dataset outputs already exist in `Data_Analysis/`.
 
-The ready-to-edit example config is:
+Ready-to-edit example configs are:
 
+- `configs/comparison/map_comparison_vis320_gad_n2.json`
 - `configs/comparison/map_comparison_vis320_gad_n3.json`
+
+Use `map_comparison_vis320_gad_n3.json` for the current three-samples-per-tracer VIS320-vs-GAD workflow. Keep `map_comparison_vis320_gad_n2.json` as a smaller two-samples-per-tracer example.
 
 The top-level structure mirrors the profile-fit comparison:
 
+- `results_source`
 - `out_folder`
 - `figure_title`
 - `target_times_min`
 - `target_time_map_key`
+- `map_color_limits`
+- `map_display_trim_rows`
 - `stats_alpha`
 - `stats_metrics`
+- `window_stats_metrics`
 - `report_windows`
 - `tracers`
 
@@ -314,6 +321,8 @@ Each sample can use one of:
 - the analysis output folder from `settings.output_folder`
 - `dx_mm` from `run_metadata.json`
 - `roi_folder` when the analysis run has exactly one selected ROI
+
+This is the recommended pattern for the current repo configs in `configs/analysis/diffusion/` because it keeps the map comparison config shorter and avoids repeating output-folder paths.
 
 If needed, a sample can still override:
 
