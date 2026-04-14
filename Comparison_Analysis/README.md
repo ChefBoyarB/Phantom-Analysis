@@ -38,9 +38,22 @@ Run from the repo root:
 & '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Maps.py --config configs\comparison\map_comparison_vis320_gad_n3.json
 ```
 
+### `Compare_Time_Course_CSV_Plots.py`
+Use this to compare time-course CSV outputs across multiple tracers and multiple samples per tracer.
+
+- This is now a config-driven workflow
+- You run it with `--config`
+- The active comparison logic lives in `Compare_Time_Course_CSV_Plots_Engine.py`
+- `Compare_Time_Course_CSV_Plots.py` is the normal entry point you should run
+
+Run from the repo root:
+
+```powershell
+& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Time_Course_CSV_Plots.py --config configs\comparison\time_course_vis320_gad_n3.json
+```
+
 ### Other comparison scripts
 
-- `Compare_Time_Course_CSV_Plots.py`
 - `Pump_Profile_Comparison_Figure_Generator.py`
 
 ## Profile-Fit Comparison Workflow
@@ -352,4 +365,62 @@ Use this for the map comparison workflow:
 
 ```powershell
 & '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Maps.py --config configs\comparison\your_map_comparison_config.json
+```
+
+## Time-Course Comparison Workflow
+
+Use this after the per-dataset analysis outputs already exist.
+
+The time-course comparison config follows the same tracer-first structure as the map comparison workflow:
+
+- `out_folder`
+- `figure_title`
+- `time_unit_label`
+- `shared_time_axis_min`
+- `shared_time_axis_max`
+- `metric_ylims`
+- `report_windows`
+- `tracers`
+
+Each tracer entry defines:
+
+- `name`
+- `label`
+- `color`
+- `marker`
+- `samples`
+
+Each sample can use one of:
+
+- `run_rel`
+- `run_path`
+- `analysis_config`
+
+`analysis_config` is the recommended pattern here too. When you use it, the script can infer:
+
+- the completed analysis output folder from `settings.output_folder`
+- `roi_folder` when the analysis run has exactly one selected ROI
+- `roi_prefix` from the time-course CSV when only one ROI prefix is present
+
+The time-course comparison writes outputs under:
+
+- `time_course_comparisons/combined_95CI/`
+- `time_course_comparisons/combined_1SD/`
+- `time_course_comparisons/fixedROI_95CI/`
+- `time_course_comparisons/fixedROI_1SD/`
+- `time_course_comparisons/diagnostics/`
+- `time_course_comparisons/summaries/`
+- `time_course_comparisons/audit/`
+
+The main summary tables are:
+
+- `time_course_comparisons/summaries/per_sample_all_time_metrics.csv`
+- `time_course_comparisons/summaries/tracer_group_all_time_metrics.csv`
+- `time_course_comparisons/summaries/window_per_sample_metric_summary.csv`
+- `time_course_comparisons/summaries/window_tracer_group_metric_summary.csv`
+
+Use this for the time-course comparison workflow:
+
+```powershell
+& '.\.venv\Scripts\python.exe' Comparison_Analysis\Compare_Time_Course_CSV_Plots.py --config configs\comparison\your_time_course_config.json
 ```

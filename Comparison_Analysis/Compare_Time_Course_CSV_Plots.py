@@ -1,3 +1,11 @@
+from Compare_Time_Course_CSV_Plots_Engine import main
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+r'''
 import io
 import os
 import json
@@ -794,3 +802,4 @@ save_audit_report(OUT_FOLDER, audit_payload)
 
 print("Saved audit files to:", str(Path(OUT_FOLDER) / "audit"))
 print("Done.")
+'''

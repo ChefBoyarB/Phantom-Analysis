@@ -39,6 +39,7 @@ Current examples include:
 - `profile_fit_examples_vis320_gad_n3.json`
 - `map_comparison_vis320_gad_n2.json`
 - `map_comparison_vis320_gad_n3.json`
+- `time_course_vis320_gad_n3.json`
 
 The `n3` configs are the current three-samples-per-tracer VIS320-vs-GAD examples. The `n2` map config is kept as a smaller comparison example.
 
