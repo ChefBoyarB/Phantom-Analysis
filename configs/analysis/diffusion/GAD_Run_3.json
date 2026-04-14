@@ -1,19 +1,19 @@
 {
-  "config_name": "VIS320_Run_3",
-  "description": "VIS 320 diffusion-only run 3 using Manual locked ROI selection and the VIS 320 135 kVp calibration.",
-  "notes": "Finalized and accepted outputs created.",
+  "config_name": "GAD_Run_3",
+  "description": "GAD diffusion-only run 3 using manual locked ROI selection and the GAD 135 kVp template. Goal to determine D and Cs with no convection and pump with 1% agarose gel phantom.",
+  "notes": "Finalized and accepted outputs created.HU noise uncertainty enabled with 10 Monte Carlo samples. ROI sensitivity uncertainty enabled with shifts of -1, 0, and +1. Global spatiotemporal fit enabled with 6 control points and max_nfev of 50000, without velocity included. Temporally regularized fit enabled with max_nfev of 50000 and lambda_d of 2.0, lambda_cs of 1.0, and lambda_cs_monotonic of 2.0.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ERFC Ficks\\VIS15_GAD6_1_0P",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\VIS320_Run_3",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\Diffusion_Only_Results\\GAD_Run_3",
     "pump_on": false,
     "fit_velocity": false,
     "convection_method": "none",
     "use_first_timepoint_as_baseline": false,
     "manual_baseline_hu": null,
-    "hu_per_conc": 16.189,
-    "hu_offset": 12.271,
-    "hu_per_conc_std": 0.0117,
-    "hu_offset_std": 0.2982,
+    "hu_per_conc": 8.681,
+    "hu_offset": 12.705,
+    "hu_per_conc_std": 0.0069,
+    "hu_offset_std": 0.176,
     "concentration_units": "mg/mL",
     "enable_hu_noise_uncertainty": true,
     "deep_region_fraction_for_hu_noise": 0.1,
@@ -30,8 +30,8 @@
     "roi_selection_mode": "manual_list",
     "manual_named_rois": [
       [
-        "VIS_320",
-        [109, 128, 181, 217]
+        "GAD",
+        [107, 126, 279, 315]
       ]
     ],
     "save_selected_rois_json": true,
