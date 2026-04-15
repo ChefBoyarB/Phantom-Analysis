@@ -218,6 +218,7 @@ REGULARIZED_FIT_MAX_NFEV = 50000
 # Penalty weights on second temporal differences; larger = smoother.
 REGULARIZED_FIT_LAMBDA_D = 2.0
 REGULARIZED_FIT_LAMBDA_CS = 1.0
+REGULARIZED_FIT_LAMBDA_V = 4.0
 # Soft penalty discouraging non-monotonic Cs(t) in pump-off diffusion runs.
 REGULARIZED_FIT_LAMBDA_CS_MONOTONIC = 2.0
 
@@ -306,6 +307,7 @@ configurable_setting_names = [
     "REGULARIZED_FIT_MAX_NFEV",
     "REGULARIZED_FIT_LAMBDA_D",
     "REGULARIZED_FIT_LAMBDA_CS",
+    "REGULARIZED_FIT_LAMBDA_V",
     "REGULARIZED_FIT_LAMBDA_CS_MONOTONIC",
     "TIME_UNIT",
     "PLOT_DEPTH_ZERO_AT_TOP",
@@ -1396,6 +1398,14 @@ def compute_velocity_mm_s() -> float:
         raise ValueError("CONVECTION_METHOD must be 'none', 'flow', or 'darcy'")
 
 
+def default_velocity_seed_mm_s() -> float:
+    """Return a clipped, finite velocity seed for free-v fits."""
+    v_seed = compute_velocity_mm_s()
+    if not np.isfinite(v_seed):
+        v_seed = 0.5 * (V_BOUNDS[0] + V_BOUNDS[1])
+    return float(np.clip(v_seed, V_BOUNDS[0], V_BOUNDS[1]))
+
+
 # ============================================================
 # FITTING
 # ============================================================
@@ -1579,14 +1589,25 @@ def fit_ade_profile_fixed_v(x_mm: np.ndarray, y: np.ndarray, t_s: float, v_mm_s:
         return _empty_fit_result(x_mm, v_fill=v_mm_s)
 
 
-def fit_ade_profile_fit_v(x_mm: np.ndarray, y: np.ndarray, t_s: float) -> Dict[str, np.ndarray]:
+def fit_ade_profile_fit_v(x_mm: np.ndarray,
+                          y: np.ndarray,
+                          t_s: float,
+                          initial_guess: Optional[Tuple[float, float, float]] = None) -> Dict[str, np.ndarray]:
     x_fit, y_fit = select_profile_points_for_fit(x_mm, y)
 
     if len(x_fit) < MIN_VALID_POINTS_FOR_FIT or t_s < MIN_TIME_SECONDS_FOR_FIT:
         return _empty_fit_result(x_mm, v_fill=np.nan)
 
     ymax = max(np.nanmax(y_fit), 1e-6)
-    p0 = [1e-3, ymax, 1e-4]
+    if initial_guess is not None and len(initial_guess) == 3:
+        d0 = float(np.clip(initial_guess[0], D_BOUNDS[0], D_BOUNDS[1]))
+        cs0 = float(np.clip(initial_guess[1], 0.0, MAX_CS_FACTOR * ymax))
+        v0 = float(np.clip(initial_guess[2], V_BOUNDS[0], V_BOUNDS[1]))
+    else:
+        d0 = float(np.clip(1e-3, D_BOUNDS[0], D_BOUNDS[1]))
+        cs0 = ymax
+        v0 = default_velocity_seed_mm_s()
+    p0 = [d0, cs0, v0]
     bounds = (
         [D_BOUNDS[0], 0.0, V_BOUNDS[0]],
         [D_BOUNDS[1], MAX_CS_FACTOR * ymax, V_BOUNDS[1]]
@@ -1655,7 +1676,8 @@ def fit_ade_profile_fit_v_local_map(x_mm: np.ndarray, y: np.ndarray, t_s: float)
 
     ymax = max(np.nanmax(y_fit), 1e-6)
     d_lo, d_hi = LOCAL_MAP_D_BOUNDS
-    p0 = [min(1e-3, d_hi), ymax, 0.1]
+    v_seed = default_velocity_seed_mm_s()
+    p0 = [min(1e-3, d_hi), ymax, v_seed]
     bounds = (
         [d_lo, 0.0, V_BOUNDS[0]],
         [d_hi, MAX_CS_FACTOR * ymax, V_BOUNDS[1]]
@@ -1725,8 +1747,9 @@ def fit_profiles_over_time(depth_mm: np.ndarray, profiles: np.ndarray, times_sec
             fitted_profiles_ci_high[i] = fit_res["y_ci_high"]
     else:
         if FIT_VELOCITY:
+            next_seed = None
             for i in range(n_t):
-                fit_res = fit_ade_profile_fit_v(depth_mm, profiles[i], times_sec[i])
+                fit_res = fit_ade_profile_fit_v(depth_mm, profiles[i], times_sec[i], initial_guess=next_seed)
                 D_vs_time[i] = fit_res["D_fit"]
                 Cs_vs_time[i] = fit_res["Cs_fit"]
                 v_vs_time[i] = fit_res["v_fit"]
@@ -1743,6 +1766,12 @@ def fit_profiles_over_time(depth_mm: np.ndarray, profiles: np.ndarray, times_sec
                 fitted_profiles_std[i] = fit_res["y_std"]
                 fitted_profiles_ci_low[i] = fit_res["y_ci_low"]
                 fitted_profiles_ci_high[i] = fit_res["y_ci_high"]
+                if np.isfinite(fit_res["D_fit"]) and np.isfinite(fit_res["Cs_fit"]) and np.isfinite(fit_res["v_fit"]):
+                    next_seed = (
+                        float(fit_res["D_fit"]),
+                        float(fit_res["Cs_fit"]),
+                        float(fit_res["v_fit"])
+                    )
         else:
             fixed_v = compute_velocity_mm_s()
             v_vs_time[:] = fixed_v
@@ -1799,13 +1828,7 @@ def fit_profiles_over_time_temporally_regularized(depth_mm: np.ndarray, profiles
       - one-D global fitting
     """
     ade_mode = use_ade_model()
-
-    # For now, keep velocity fixed unless user is already using fixed-v logic.
-    if ade_mode and FIT_VELOCITY:
-        print("Temporally regularized fit currently supports fixed-v or diffusion-only runs. Falling back to per-timepoint fit.")
-        fit_init = fit_profiles_over_time(depth_mm, profiles, times_sec)
-        D_init, Cs_init, v_init, fitted_init = fit_init[:4]
-        return D_init, Cs_init, v_init, fitted_init, D_init.copy(), Cs_init.copy()
+    fit_velocity = ade_mode and FIT_VELOCITY
 
     n_t = profiles.shape[0]
     fit_init = fit_profiles_over_time(depth_mm, profiles, times_sec)
@@ -1843,31 +1866,54 @@ def fit_profiles_over_time_temporally_regularized(depth_mm: np.ndarray, profiles
 
     D_valid_init = _fill_nan_with_interpolation(D_init[valid_time_idx], D_fallback)
     Cs_valid_init = _fill_nan_with_interpolation(Cs_init[valid_time_idx], Cs_fallback)
+    v_ref = default_velocity_seed_mm_s() if ade_mode else 0.0
+    if fit_velocity:
+        finite_v = v_init[np.isfinite(v_init)]
+        v_fallback = float(np.nanmedian(finite_v)) if finite_v.size else v_ref
+        v_fallback = float(np.clip(v_fallback, V_BOUNDS[0], V_BOUNDS[1]))
+        v_valid_init = _fill_nan_with_interpolation(v_init[valid_time_idx], v_fallback)
+        v_valid_init = np.clip(v_valid_init, V_BOUNDS[0], V_BOUNDS[1])
     logD_init = np.log10(np.clip(D_valid_init, D_BOUNDS[0], D_BOUNDS[1]))
 
-    p0 = np.concatenate([logD_init, Cs_valid_init])
-    lb = np.concatenate([
+    p0_parts = [logD_init, Cs_valid_init]
+    lb_parts = [
         np.full(len(valid_time_idx), np.log10(D_BOUNDS[0])),
         np.zeros(len(valid_time_idx))
-    ])
-    ub = np.concatenate([
+    ]
+    ub_parts = [
         np.full(len(valid_time_idx), np.log10(D_BOUNDS[1])),
         np.full(len(valid_time_idx), MAX_CS_FACTOR * ymax_global)
-    ])
+    ]
+    if fit_velocity:
+        p0_parts.append(v_valid_init)
+        lb_parts.append(np.full(len(valid_time_idx), V_BOUNDS[0]))
+        ub_parts.append(np.full(len(valid_time_idx), V_BOUNDS[1]))
+
+    p0 = np.concatenate(p0_parts)
+    lb = np.concatenate(lb_parts)
+    ub = np.concatenate(ub_parts)
 
     cs_scale = max(float(np.nanmax(Cs_valid_init)), 1.0)
-    fixed_v = compute_velocity_mm_s() if ade_mode else 0.0
+    v_scale = max(float(abs(v_ref)), float(np.nanmedian(v_valid_init)) if fit_velocity else 0.0, 1e-6)
+    fixed_v = v_ref if ade_mode else 0.0
 
     def residual_func(params):
         n = len(valid_time_idx)
         logD_t = params[:n]
-        Cs_t = params[n:]
+        Cs_t = params[n:2 * n]
+        if fit_velocity:
+            v_t = params[2 * n:]
+        else:
+            v_t = np.full(n, fixed_v, dtype=float)
         D_t = 10 ** logD_t
 
         data_res = []
-        for x_fit, y_fit, t_s, D_i, Cs_i in zip(x_fit_list, y_fit_list, fit_time_list, D_t, Cs_t):
+        for x_fit, y_fit, t_s, D_i, Cs_i, v_i in zip(x_fit_list, y_fit_list, fit_time_list, D_t, Cs_t, v_t):
             if ade_mode:
-                y_hat = ade_profile_model_fixed_v(x_fit, D_i, Cs_i, fixed_v, t_s)
+                if fit_velocity:
+                    y_hat = ade_profile_model_fit_v(x_fit, D_i, Cs_i, v_i, t_s)
+                else:
+                    y_hat = ade_profile_model_fixed_v(x_fit, D_i, Cs_i, fixed_v, t_s)
             else:
                 y_hat = diffusion_profile_model(x_fit, D_i, Cs_i, t_s)
             data_res.append(y_hat - y_fit)
@@ -1881,6 +1927,8 @@ def fit_profiles_over_time_temporally_regularized(depth_mm: np.ndarray, profiles
         if len(Cs_t) >= 2 and REGULARIZED_FIT_LAMBDA_CS_MONOTONIC > 0:
             neg_steps = np.minimum(np.diff(Cs_t), 0.0) / cs_scale
             reg_parts.append(np.sqrt(REGULARIZED_FIT_LAMBDA_CS_MONOTONIC) * neg_steps)
+        if fit_velocity and len(v_t) >= 3 and REGULARIZED_FIT_LAMBDA_V > 0:
+            reg_parts.append(np.sqrt(REGULARIZED_FIT_LAMBDA_V) * ((v_t[:-2] - 2 * v_t[1:-1] + v_t[2:]) / v_scale))
         return np.concatenate(reg_parts)
 
     result = least_squares(
@@ -1893,16 +1941,24 @@ def fit_profiles_over_time_temporally_regularized(depth_mm: np.ndarray, profiles
     params = result.x
     n = len(valid_time_idx)
     logD_opt = params[:n]
-    Cs_opt = params[n:]
+    Cs_opt = params[n:2 * n]
+    if fit_velocity:
+        v_opt = params[2 * n:]
+    else:
+        v_opt = np.full(n, fixed_v, dtype=float)
     D_opt = 10 ** logD_opt
 
     D_vs_time = np.full(n_t, np.nan, dtype=float)
     Cs_vs_time = np.full(n_t, np.nan, dtype=float)
-    v_vs_time = np.full(n_t, fixed_v if ade_mode else 0.0, dtype=float)
+    if fit_velocity:
+        v_vs_time = np.full(n_t, np.nan, dtype=float)
+    else:
+        v_vs_time = np.full(n_t, fixed_v if ade_mode else 0.0, dtype=float)
     fitted_profiles = np.full_like(profiles, np.nan, dtype=float)
 
     D_vs_time[valid_time_idx] = D_opt
     Cs_vs_time[valid_time_idx] = Cs_opt
+    v_vs_time[valid_time_idx] = v_opt
 
     D_plot = D_vs_time.copy()
     Cs_plot = Cs_vs_time.copy()
@@ -1911,10 +1967,13 @@ def fit_profiles_over_time_temporally_regularized(depth_mm: np.ndarray, profiles
     if np.sum(np.isfinite(Cs_plot)) >= 2:
         Cs_plot = _fill_nan_with_interpolation(Cs_plot, Cs_fallback)
 
-    for idx, D_i, Cs_i in zip(valid_time_idx, D_opt, Cs_opt):
+    for idx, D_i, Cs_i, v_i in zip(valid_time_idx, D_opt, Cs_opt, v_opt):
         t_s = times_sec[idx]
         if ade_mode:
-            fitted_profiles[idx] = ade_profile_model_fixed_v(depth_mm, D_i, Cs_i, fixed_v, t_s)
+            if fit_velocity:
+                fitted_profiles[idx] = ade_profile_model_fit_v(depth_mm, D_i, Cs_i, v_i, t_s)
+            else:
+                fitted_profiles[idx] = ade_profile_model_fixed_v(depth_mm, D_i, Cs_i, fixed_v, t_s)
         else:
             fitted_profiles[idx] = diffusion_profile_model(depth_mm, D_i, Cs_i, t_s)
 
@@ -2005,7 +2064,7 @@ def fit_global_spatiotemporal_profiles(depth_mm: np.ndarray, profiles: np.ndarra
     lb = [np.log10(D_BOUNDS[0])] + [0.0] * len(cs_init)
     ub = [np.log10(D_BOUNDS[1])] + [MAX_CS_FACTOR * profile_max] * len(cs_init)
     if fit_v:
-        p0.append(0.0)
+        p0.append(default_velocity_seed_mm_s())
         lb.append(V_BOUNDS[0])
         ub.append(V_BOUNDS[1])
 
