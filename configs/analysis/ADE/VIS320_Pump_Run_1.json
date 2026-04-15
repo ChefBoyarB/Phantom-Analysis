@@ -4,7 +4,7 @@
   "notes": "This is the config-first version of the validated VIS 320 pressure workflow. Before reusing it for a new run, change at least output_folder and any dataset-specific paths or ROI values that need to differ.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS16_GAD7_1_5.5P",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\VIS320_Pump_Run_1",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fixed_V\\VIS320_Pump_Run_1",
     "pump_on": true,
     "fit_velocity": false,
     "convection_method": "darcy",
