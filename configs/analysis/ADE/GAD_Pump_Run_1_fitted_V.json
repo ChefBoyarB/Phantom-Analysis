@@ -1,10 +1,10 @@
 {
-  "config_name": "GAD_Pump_Run_1_fit_velocity_stabilized",
+  "config_name": "GAD_Pump_Run_1_fitted_V",
   "description": "GAD pump-on pressure dataset using Darcy convection and the GAD 135 kVp calibration, stabilized for a free-velocity test fit.",
-  "notes": "This free-velocity test keeps the same dataset and ROI as GAD_Pump_Run_1, but is tuned to favor a smoother and more stable scan-time velocity estimate. It relies on the updated regularized free-v fit path, uses mild temporal smoothing, starts fitting later to avoid unstable early frames, requires more profile support, uses a lower local-map threshold to preserve tail information, and disables the global one-velocity fit so it does not compete with time-varying v(t).",
+  "notes": "This free-velocity test keeps the same dataset and ROI as GAD_Pump_Run_1, but is tuned to favor a smoother and more stable scan-time velocity estimate. It relies on the updated regularized free-v fit path, uses scaled least-squares for free-v fitting, adds a gentle velocity prior near the nominal Darcy estimate, uses mild temporal smoothing, starts fitting later to avoid unstable early frames, requires more profile support, uses a lower local-map threshold to preserve tail information, and disables the global one-velocity fit so it does not compete with time-varying v(t).",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS16_GAD7_1_5.5P",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\GAD_Pump_Run_1_fit_velocity_stabilized",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\GAD_Pump_Run_1_fitted_V",
     "pump_on": true,
     "fit_velocity": true,
     "convection_method": "darcy",
@@ -53,6 +53,9 @@
     "fit_only_positive_concentration": false,
     "fit_profile_threshold_fraction": 0.01,
     "max_cs_factor": 5.0,
+    "fit_velocity_use_scaled_least_squares": true,
+    "fit_velocity_lambda_v_prior": 1.0,
+    "velocity_prior_mm_s": 9.3388e-05,
     "d_bounds": [1e-06, 0.01],
     "v_bounds": [5e-05, 0.00015],
     "save_pixelwise_apparent_diffusion_map": false,

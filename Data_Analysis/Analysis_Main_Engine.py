@@ -174,6 +174,9 @@ MIN_VALID_POINTS_FOR_FIT = 3
 FIT_ONLY_POSITIVE_CONCENTRATION = False
 FIT_PROFILE_THRESHOLD_FRACTION = 0.03   # keep points above 5% of profile max
 MAX_CS_FACTOR = 5.0                     # upper bound for Cs as factor of max profile concentration
+FIT_VELOCITY_USE_SCALED_LEAST_SQUARES = True
+FIT_VELOCITY_LAMBDA_V_PRIOR = 0.0
+VELOCITY_PRIOR_MM_S = None
 
 # Diffusion bounds [mm^2/s]
 D_BOUNDS = (1e-6, 0.01)
@@ -291,6 +294,9 @@ configurable_setting_names = [
     "FIT_ONLY_POSITIVE_CONCENTRATION",
     "FIT_PROFILE_THRESHOLD_FRACTION",
     "MAX_CS_FACTOR",
+    "FIT_VELOCITY_USE_SCALED_LEAST_SQUARES",
+    "FIT_VELOCITY_LAMBDA_V_PRIOR",
+    "VELOCITY_PRIOR_MM_S",
     "D_BOUNDS",
     "V_BOUNDS",
     "SAVE_PIXELWISE_APPARENT_DIFFUSION_MAP",
@@ -1406,6 +1412,14 @@ def default_velocity_seed_mm_s() -> float:
     return float(np.clip(v_seed, V_BOUNDS[0], V_BOUNDS[1]))
 
 
+def velocity_prior_mm_s() -> float:
+    """Return the user-specified or nominal velocity prior for free-v fits."""
+    v_prior = VELOCITY_PRIOR_MM_S
+    if v_prior is None or not np.isfinite(v_prior):
+        v_prior = default_velocity_seed_mm_s()
+    return float(np.clip(v_prior, V_BOUNDS[0], V_BOUNDS[1]))
+
+
 # ============================================================
 # FITTING
 # ============================================================
@@ -1500,6 +1514,127 @@ def _compute_prediction_uncertainty(model_fn, x_pred: np.ndarray, popt: np.ndarr
     except Exception:
         nan_arr = np.full_like(x_pred, np.nan, dtype=float)
         return nan_arr, nan_arr.copy(), nan_arr.copy()
+
+
+def _estimate_pcov_from_jacobian(jac: np.ndarray, residuals: np.ndarray) -> Optional[np.ndarray]:
+    jac = np.asarray(jac, dtype=float)
+    residuals = np.asarray(residuals, dtype=float).reshape(-1)
+    if jac.ndim != 2 or residuals.ndim != 1 or jac.shape[0] != residuals.size:
+        return None
+    if not np.all(np.isfinite(jac)) or not np.all(np.isfinite(residuals)):
+        return None
+
+    n_res, n_params = jac.shape
+    if n_res < n_params:
+        return None
+
+    try:
+        jtj = jac.T @ jac
+        jtj_inv = np.linalg.pinv(jtj)
+    except Exception:
+        return None
+
+    dof = n_res - n_params
+    if dof > 0:
+        rss = float(np.dot(residuals, residuals))
+        scale = rss / dof
+    else:
+        scale = np.nan
+
+    if not np.isfinite(scale):
+        return np.full((n_params, n_params), np.nan, dtype=float)
+    return jtj_inv * scale
+
+
+def _fit_ade_profile_fit_v_core(x_mm: np.ndarray,
+                                x_fit: np.ndarray,
+                                y_fit: np.ndarray,
+                                t_s: float,
+                                d_bounds: Tuple[float, float],
+                                initial_guess: Optional[Tuple[float, float, float]] = None) -> Dict[str, np.ndarray]:
+    ymax = max(np.nanmax(y_fit), 1e-6)
+    d_lo, d_hi = d_bounds
+    max_cs = MAX_CS_FACTOR * ymax
+
+    if initial_guess is not None and len(initial_guess) == 3:
+        d0 = float(np.clip(initial_guess[0], d_lo, d_hi))
+        cs0 = float(np.clip(initial_guess[1], 0.0, max_cs))
+        v0 = float(np.clip(initial_guess[2], V_BOUNDS[0], V_BOUNDS[1]))
+    else:
+        d0 = float(np.clip(min(1e-3, d_hi), d_lo, d_hi))
+        cs0 = ymax
+        v0 = default_velocity_seed_mm_s()
+
+    def model(x, D, Cs, v):
+        return ade_profile_model_fit_v(x, D, Cs, v, t_s)
+
+    if not FIT_VELOCITY_USE_SCALED_LEAST_SQUARES:
+        p0 = [d0, cs0, v0]
+        bounds = (
+            [d_lo, 0.0, V_BOUNDS[0]],
+            [d_hi, max_cs, V_BOUNDS[1]]
+        )
+        popt, pcov = curve_fit(model, x_fit, y_fit, p0=p0, bounds=bounds, maxfev=40000)
+        return _build_fit_result(x_mm, model, np.asarray(popt, dtype=float), pcov, fit_velocity=True)
+
+    cs_scale = max(float(ymax), 1.0)
+    v_prior = velocity_prior_mm_s()
+    v_scale = max(abs(v0), abs(v_prior), 1e-6)
+    log_d_bounds = (float(np.log10(d_lo)), float(np.log10(d_hi)))
+
+    z0 = np.array([
+        np.log10(d0),
+        cs0 / cs_scale,
+        v0 / v_scale,
+    ], dtype=float)
+    z_lo = np.array([
+        log_d_bounds[0],
+        0.0,
+        V_BOUNDS[0] / v_scale,
+    ], dtype=float)
+    z_hi = np.array([
+        log_d_bounds[1],
+        max_cs / cs_scale,
+        V_BOUNDS[1] / v_scale,
+    ], dtype=float)
+    lambda_v_prior = max(float(FIT_VELOCITY_LAMBDA_V_PRIOR), 0.0)
+
+    def unpack_params(z: np.ndarray) -> Tuple[float, float, float]:
+        z = np.asarray(z, dtype=float)
+        D = float(np.clip(10 ** z[0], d_lo, d_hi))
+        Cs = float(np.clip(z[1] * cs_scale, 0.0, max_cs))
+        v = float(np.clip(z[2] * v_scale, V_BOUNDS[0], V_BOUNDS[1]))
+        return D, Cs, v
+
+    def residual_func(z: np.ndarray) -> np.ndarray:
+        D, Cs, v = unpack_params(z)
+        data_res = model(x_fit, D, Cs, v) - y_fit
+        if lambda_v_prior <= 0:
+            return data_res
+        prior_res = np.array([
+            np.sqrt(lambda_v_prior) * ((v - v_prior) / v_scale)
+        ], dtype=float)
+        return np.concatenate([data_res, prior_res])
+
+    result = least_squares(
+        residual_func,
+        x0=z0,
+        bounds=(z_lo, z_hi),
+        max_nfev=40000,
+        x_scale="jac"
+    )
+    D_fit, Cs_fit, v_fit = unpack_params(result.x)
+    popt = np.array([D_fit, Cs_fit, v_fit], dtype=float)
+
+    jac_scaled = np.asarray(result.jac, dtype=float)
+    dz_dp = np.array([
+        1.0 / (max(D_fit, 1e-12) * np.log(10.0)),
+        1.0 / cs_scale,
+        1.0 / v_scale,
+    ], dtype=float)
+    jac_phys = jac_scaled * dz_dp.reshape(1, -1)
+    pcov = _estimate_pcov_from_jacobian(jac_phys, result.fun)
+    return _build_fit_result(x_mm, model, popt, pcov, fit_velocity=True)
 
 
 def _build_fit_result(x_mm: np.ndarray,
@@ -1598,29 +1733,18 @@ def fit_ade_profile_fit_v(x_mm: np.ndarray,
     if len(x_fit) < MIN_VALID_POINTS_FOR_FIT or t_s < MIN_TIME_SECONDS_FOR_FIT:
         return _empty_fit_result(x_mm, v_fill=np.nan)
 
-    ymax = max(np.nanmax(y_fit), 1e-6)
-    if initial_guess is not None and len(initial_guess) == 3:
-        d0 = float(np.clip(initial_guess[0], D_BOUNDS[0], D_BOUNDS[1]))
-        cs0 = float(np.clip(initial_guess[1], 0.0, MAX_CS_FACTOR * ymax))
-        v0 = float(np.clip(initial_guess[2], V_BOUNDS[0], V_BOUNDS[1]))
-    else:
-        d0 = float(np.clip(1e-3, D_BOUNDS[0], D_BOUNDS[1]))
-        cs0 = ymax
-        v0 = default_velocity_seed_mm_s()
-    p0 = [d0, cs0, v0]
-    bounds = (
-        [D_BOUNDS[0], 0.0, V_BOUNDS[0]],
-        [D_BOUNDS[1], MAX_CS_FACTOR * ymax, V_BOUNDS[1]]
-    )
-
     try:
-        def model(x, D, Cs, v):
-            return ade_profile_model_fit_v(x, D, Cs, v, t_s)
-
-        popt, pcov = curve_fit(model, x_fit, y_fit, p0=p0, bounds=bounds, maxfev=40000)
         print(f"t = {t_s:.3f} s")
-        print("popt =", popt)
-        return _build_fit_result(x_mm, model, np.asarray(popt, dtype=float), pcov, fit_velocity=True)
+        fit_res = _fit_ade_profile_fit_v_core(
+            x_mm,
+            x_fit,
+            y_fit,
+            t_s,
+            D_BOUNDS,
+            initial_guess=initial_guess
+        )
+        print("popt =", [fit_res["D_fit"], fit_res["Cs_fit"], fit_res["v_fit"]])
+        return fit_res
     except Exception as e:
         print(f"Fit failed at t={t_s:.3f} s with error: {e}")
         return _empty_fit_result(x_mm, v_fill=np.nan)
@@ -1674,21 +1798,14 @@ def fit_ade_profile_fit_v_local_map(x_mm: np.ndarray, y: np.ndarray, t_s: float)
     if len(x_fit) < MIN_VALID_POINTS_FOR_FIT or t_s < MIN_TIME_SECONDS_FOR_FIT:
         return _empty_fit_result(x_mm, v_fill=np.nan)
 
-    ymax = max(np.nanmax(y_fit), 1e-6)
-    d_lo, d_hi = LOCAL_MAP_D_BOUNDS
-    v_seed = default_velocity_seed_mm_s()
-    p0 = [min(1e-3, d_hi), ymax, v_seed]
-    bounds = (
-        [d_lo, 0.0, V_BOUNDS[0]],
-        [d_hi, MAX_CS_FACTOR * ymax, V_BOUNDS[1]]
-    )
-
     try:
-        def model(x, D, Cs, v):
-            return ade_profile_model_fit_v(x, D, Cs, v, t_s)
-
-        popt, pcov = curve_fit(model, x_fit, y_fit, p0=p0, bounds=bounds, maxfev=40000)
-        return _build_fit_result(x_mm, model, np.asarray(popt, dtype=float), pcov, fit_velocity=True)
+        return _fit_ade_profile_fit_v_core(
+            x_mm,
+            x_fit,
+            y_fit,
+            t_s,
+            LOCAL_MAP_D_BOUNDS
+        )
     except Exception:
         return _empty_fit_result(x_mm, v_fill=np.nan)
 
