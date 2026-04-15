@@ -4,7 +4,7 @@
   "notes": "This config preserves the run-specific GAD_Pump_Run_3 input/output paths and skip-frame settings while applying the fitted-velocity stabilized template settings.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS14_GAD5_1_5.5P",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\GAD_Pump_Run_3",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fitted_V\\GAD_Pump_Run_3_fitted_V",
     "pump_on": true,
     "fit_velocity": true,
     "convection_method": "darcy",

@@ -4,7 +4,7 @@
   "notes": "This free-velocity test keeps the same dataset and ROI as GAD_Pump_Run_1, but is tuned to favor a smoother and more stable scan-time velocity estimate. It relies on the updated regularized free-v fit path, uses scaled least-squares for free-v fitting, adds a gentle velocity prior near the nominal Darcy estimate, uses mild temporal smoothing, starts fitting later to avoid unstable early frames, requires more profile support, uses a lower local-map threshold to preserve tail information, and disables the global one-velocity fit so it does not compete with time-varying v(t).",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS16_GAD7_1_5.5P",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\GAD_Pump_Run_1_fitted_V",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fitted_V\\GAD_Pump_Run_1_fitted_V",
     "pump_on": true,
     "fit_velocity": true,
     "convection_method": "darcy",

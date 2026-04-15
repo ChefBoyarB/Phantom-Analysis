@@ -4,7 +4,7 @@
   "notes": "This config preserves the run-specific VIS320_Pump_Run_1 input/output paths, VIS calibration values, and skip-frame settings while applying the fitted-velocity stabilized template settings.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS16_GAD7_1_5.5P",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\VIS320_Pump_Run_1",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fitted_V\\VIS320_Pump_Run_1_fitted_V",
     "pump_on": true,
     "fit_velocity": true,
     "convection_method": "darcy",
