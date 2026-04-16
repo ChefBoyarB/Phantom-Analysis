@@ -1,6 +1,7 @@
 {
   "config_name": "VIS320_Pump_Run_1_fitted_V",
   "description": "VIS 320 pump-on pressure dataset using Darcy convection and the VIS 320 135 kVp calibration, stabilized for a fitted-velocity run.",
+  "to_run_powershell": "& '.\\.venv\\Scripts\\python.exe' Data_Analysis\\Analysis_Main_Config_First.py --config configs\\analysis\\ADE\\VIS320_Pump_Run_1_Fitted_V.json",
   "notes": "This config preserves the run-specific VIS320_Pump_Run_1 input/output paths, VIS calibration values, and skip-frame settings while applying the fitted-velocity stabilized template settings.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS16_GAD7_1_5.5P",
@@ -23,7 +24,7 @@
     "uncertainty_random_seed": 42,
     "flow_rate_ml_min": 0.0,
     "effective_area_mm2": 75.0,
-    "permeability_mm2": 3.7e-09,
+    "permeability_mm2": 1.5e-09,
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -25.24,
     "depth_axis": "rows",

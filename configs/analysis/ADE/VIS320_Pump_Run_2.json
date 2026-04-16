@@ -1,6 +1,7 @@
 {
   "config_name": "VIS320_Pump_Run_2",
   "description": "VIS 320 pump-on pressure dataset using Darcy convection and the VIS 320 135 kVp calibration.",
+  "to_run_powershell": "& '.\\.venv\\Scripts\\python.exe' Data_Analysis\\Analysis_Main_Config_First.py --config configs\\analysis\\ADE\\VIS320_Pump_Run_2.json",
   "notes": "This is the config-first version of the validated VIS 320 pressure workflow. Before reusing it for a new run, change at least output_folder and any dataset-specific paths or ROI values that need to differ.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS13_GAD4_1_5.5P",
@@ -23,14 +24,14 @@
     "uncertainty_random_seed": 42,
     "flow_rate_ml_min": 0.0,
     "effective_area_mm2": 75.0,
-    "permeability_mm2": 3.7e-09,
+    "permeability_mm2": 1.5e-09,
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -25.24,
     "depth_axis": "rows",
     "roi_selection_mode": "interactive",
     "manual_named_rois": [
       [
-        "GAD_Darcy_Fixed_V",
+        "VIS_320_PUMP",
         [146, 165, 277, 313]
       ]
     ],

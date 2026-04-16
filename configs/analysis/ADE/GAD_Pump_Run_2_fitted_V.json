@@ -1,10 +1,11 @@
 {
-  "config_name": "GAD_Pump_Run_2_fitted_V",
+  "config_name": "GAD_Pump_Run_2_Fitted_V",
   "description": "GAD pump-on pressure dataset using Darcy convection and the GAD 135 kVp calibration, stabilized for a fitted-velocity run.",
+  "to_run_powershell": "& '.\\.venv\\Scripts\\python.exe' Data_Analysis\\Analysis_Main_Config_First.py --config configs\\analysis\\ADE\\GAD_Pump_Run_2_Fitted_V.json",
   "notes": "This config preserves the run-specific GAD_Pump_Run_2 input/output paths and skip-frame settings while applying the fitted-velocity stabilized template settings.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS13_GAD4_1_5.5P",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fitted_V\\GAD_Pump_Run_2_fitted_V",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fitted_V\\GAD_Pump_Run_2_Fitted_V",
     "pump_on": true,
     "fit_velocity": true,
     "convection_method": "darcy",
@@ -23,15 +24,15 @@
     "uncertainty_random_seed": 42,
     "flow_rate_ml_min": 0.0,
     "effective_area_mm2": 75.0,
-    "permeability_mm2": 3.7e-09,
+    "permeability_mm2": 3.18e-10,
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -25.24,
     "depth_axis": "rows",
-    "roi_selection_mode": "interactive",
+    "roi_selection_mode": "manual_list",
     "manual_named_rois": [
       [
-        "GAD_Darcy_Fixed_V",
-        [146, 165, 277, 313]
+        "GAD_PUMP",
+        [99, 119, 294, 330]
       ]
     ],
     "save_selected_rois_json": true,
@@ -55,9 +56,9 @@
     "max_cs_factor": 5.0,
     "fit_velocity_use_scaled_least_squares": true,
     "fit_velocity_lambda_v_prior": 1.0,
-    "velocity_prior_mm_s": 9.3388e-05,
+    "velocity_prior_mm_s": 8.02632e-06,
     "d_bounds": [1e-06, 0.01],
-    "v_bounds": [5e-05, 0.00015],
+    "v_bounds": [1e-06, 0.00015],
     "save_pixelwise_apparent_diffusion_map": false,
     "save_effective_diffusion_map": true,
     "local_effective_map_window_size": 15,

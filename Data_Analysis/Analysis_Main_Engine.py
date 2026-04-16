@@ -229,6 +229,7 @@ REGULARIZED_FIT_LAMBDA_CS_MONOTONIC = 2.0
 # Plot time unit
 # ------------------------------------------------------------
 TIME_UNIT = "minutes"   # "seconds" or "minutes"
+VELOCITY_PLOT_Y_LIMITS = (0.0, 2e-4)
 
 # ------------------------------------------------------------
 # Plot orientation
@@ -242,6 +243,7 @@ PECLET_LENGTH_MODE = "penetration_depth"   # "penetration_depth" or "roi_depth"
 PECLET_THRESHOLD_FRACTION = 0.10            # used only for penetration-depth based Pe
 PECLET_MIN_LENGTH_MM = 1e-6
 TRANSPORT_EPS = 1e-12
+MIN_MODEL_TIME_SECONDS = 1e-9
 
 
 # ============================================================
@@ -316,6 +318,7 @@ configurable_setting_names = [
     "REGULARIZED_FIT_LAMBDA_V",
     "REGULARIZED_FIT_LAMBDA_CS_MONOTONIC",
     "TIME_UNIT",
+    "VELOCITY_PLOT_Y_LIMITS",
     "PLOT_DEPTH_ZERO_AT_TOP",
     "PECLET_LENGTH_MODE",
     "PECLET_THRESHOLD_FRACTION",
@@ -328,6 +331,7 @@ tuple_setting_names = {
     "D_BOUNDS",
     "V_BOUNDS",
     "DERIVED_EFFECTIVE_D_BOUNDS",
+    "VELOCITY_PLOT_Y_LIMITS",
 }
 
 path_setting_names = {
@@ -339,6 +343,7 @@ allowed_config_metadata_keys = {
     "config_name",
     "description",
     "notes",
+    "to_run_powershell",
 }
 
 default_user_settings = {
@@ -352,6 +357,7 @@ active_config_info = {
     "config_name": None,
     "description": None,
     "notes": None,
+    "to_run_powershell": None,
     "applied_settings": [],
 }
 
@@ -450,6 +456,7 @@ def load_settings_from_config(config_path: str) -> Dict[str, object]:
         "config_name": raw_config.get("config_name"),
         "description": raw_config.get("description"),
         "notes": raw_config.get("notes"),
+        "to_run_powershell": raw_config.get("to_run_powershell"),
         "applied_settings": sorted(overrides.keys()),
     }
     return copy.deepcopy(active_config_info)
@@ -1357,7 +1364,7 @@ def compute_depth_profiles(conc_stack: np.ndarray,
 # ============================================================
 
 def diffusion_profile_model(x_mm: np.ndarray, D_mm2_s: float, Cs: float, t_s: float) -> np.ndarray:
-    t_s = max(float(t_s), MIN_TIME_SECONDS_FOR_FIT)
+    t_s = max(float(t_s), MIN_TIME_SECONDS_FOR_FIT, MIN_MODEL_TIME_SECONDS)
     D_mm2_s = max(float(D_mm2_s), 1e-12)
     return Cs * erfc(x_mm / (2.0 * np.sqrt(D_mm2_s * t_s)))
 
@@ -1366,7 +1373,7 @@ def ade_profile_model_fixed_v(x_mm: np.ndarray, D_mm2_s: float, Cs: float, v_mm_
     """
     Semi-infinite advection-diffusion boundary solution.
     """
-    t_s = max(float(t_s), MIN_TIME_SECONDS_FOR_FIT)
+    t_s = max(float(t_s), MIN_TIME_SECONDS_FOR_FIT, MIN_MODEL_TIME_SECONDS)
     D_mm2_s = max(float(D_mm2_s), 1e-12)
 
     term1 = erfc((x_mm - v_mm_s * t_s) / (2.0 * np.sqrt(D_mm2_s * t_s)))
@@ -2814,6 +2821,85 @@ def plot_parameter_vs_time(times_plot, values, ylabel, title, out_path,
     save_figure(fig, out_path)
 
 
+def plot_velocity_vs_time(times_plot, values, title, out_path,
+                          std_values=None, ci_low=None, ci_high=None,
+                          regularized_values=None):
+    times_plot = np.asarray(times_plot, dtype=float)
+    values = np.asarray(values, dtype=float)
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    if ci_low is not None and ci_high is not None:
+        ci_low = np.asarray(ci_low, dtype=float)
+        ci_high = np.asarray(ci_high, dtype=float)
+        valid = np.isfinite(times_plot) & np.isfinite(ci_low) & np.isfinite(ci_high)
+        if np.any(valid):
+            ax.fill_between(times_plot[valid], ci_low[valid], ci_high[valid], alpha=0.2, label="95% CI")
+
+    if std_values is not None:
+        std_values = np.asarray(std_values, dtype=float)
+        lower = values - std_values
+        upper = values + std_values
+        valid = np.isfinite(times_plot) & np.isfinite(lower) & np.isfinite(upper)
+        if np.any(valid):
+            ax.fill_between(times_plot[valid], lower[valid], upper[valid], alpha=0.15, label="±1 SD")
+
+    has_regularized = regularized_values is not None
+    if has_regularized:
+        regularized_values = np.asarray(regularized_values, dtype=float)
+        has_regularized = np.any(np.isfinite(regularized_values))
+
+    raw_valid = np.isfinite(times_plot) & np.isfinite(values)
+    if has_regularized:
+        reg_valid = np.isfinite(times_plot) & np.isfinite(regularized_values)
+        if np.any(raw_valid):
+            ax.plot(
+                times_plot[raw_valid],
+                values[raw_valid],
+                marker="o",
+                linewidth=1.5,
+                markersize=4.5,
+                alpha=0.4,
+                color="0.35",
+                label="Raw fit"
+            )
+        if np.any(reg_valid):
+            ax.plot(
+                times_plot[reg_valid],
+                regularized_values[reg_valid],
+                marker="o",
+                linewidth=2.8,
+                markersize=6,
+                color="#1f77b4",
+                label="Regularized fit"
+            )
+    elif np.any(raw_valid):
+        ax.plot(times_plot[raw_valid], values[raw_valid], marker="o", linewidth=2, label="Fit")
+
+    ax.set_xlabel(f"Time ({TIME_UNIT})")
+    ax.set_ylabel(r"Velocity (mm/s)")
+    ax.set_title(title)
+    ax.grid(True)
+    if VELOCITY_PLOT_Y_LIMITS is not None:
+        ax.set_ylim(*VELOCITY_PLOT_Y_LIMITS)
+    handles, labels = ax.get_legend_handles_labels()
+    if labels:
+        preferred_order = ["Regularized fit", "Fit", "Raw fit", "95% CI", "±1 SD"]
+        ordered_handles = []
+        ordered_labels = []
+        for name in preferred_order:
+            for handle, label in zip(handles, labels):
+                if label == name and label not in ordered_labels:
+                    ordered_handles.append(handle)
+                    ordered_labels.append(label)
+        for handle, label in zip(handles, labels):
+            if label not in ordered_labels:
+                ordered_handles.append(handle)
+                ordered_labels.append(label)
+        ax.legend(ordered_handles, ordered_labels)
+
+    save_figure(fig, out_path)
+
+
 def plot_transport_curves(times_plot, diff_curve, conv_curve, total_curve, out_path, roi_name):
     roi_display_name = format_roi_display_name(roi_name)
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -3589,32 +3675,33 @@ def analyze_single_roi(roi_name: str,
     )
 
     if PUMP_ON:
-        plot_parameter_vs_time(
+        velocity_overlay = v_vs_time_reg if ENABLE_TEMPORALLY_REGULARIZED_FIT else None
+        plot_velocity_vs_time(
             times_plot, v_vs_time,
-            r"Velocity (mm/s)",
             f"{roi_display_name}: Velocity vs Time",
             roi_output_path(output_dirs, "velocity_vs_time.png"),
             std_values=v_std_vs_time,
             ci_low=v_ci_low_vs_time,
-            ci_high=v_ci_high_vs_time
+            ci_high=v_ci_high_vs_time,
+            regularized_values=velocity_overlay
         )
-        plot_parameter_vs_time(
+        plot_velocity_vs_time(
             times_plot, v_vs_time,
-            r"Velocity (mm/s)",
             f"{roi_display_name}: Velocity vs Time (fixed ROI uncertainty)",
             roi_output_path(output_dirs, "velocity_vs_time_fixed_roi_uncertainty.png"),
             std_values=v_fixed_roi_std_vs_time,
             ci_low=v_fixed_roi_ci_low_vs_time,
-            ci_high=v_fixed_roi_ci_high_vs_time
+            ci_high=v_fixed_roi_ci_high_vs_time,
+            regularized_values=velocity_overlay
         )
-        plot_parameter_vs_time(
+        plot_velocity_vs_time(
             times_plot, v_vs_time,
-            r"Velocity (mm/s)",
             f"{roi_display_name}: Velocity vs Time (combined uncertainty)",
             roi_output_path(output_dirs, "velocity_vs_time_combined_uncertainty.png"),
             std_values=v_combined_std_vs_time,
             ci_low=v_combined_ci_low_vs_time,
-            ci_high=v_combined_ci_high_vs_time
+            ci_high=v_combined_ci_high_vs_time,
+            regularized_values=velocity_overlay
         )
 
     plot_transport_curves(
@@ -3812,6 +3899,13 @@ def analyze_single_roi(roi_name: str,
             f"{roi_display_name}: Temporally Regularized Effective Fitted Boundary Concentration vs Time",
             roi_output_path(output_dirs, "temporally_regularized_fitted_Cs_vs_time.png")
         )
+        if PUMP_ON:
+            plot_velocity_vs_time(
+                times_plot,
+                v_vs_time_reg,
+                f"{roi_display_name}: Temporally Regularized Velocity vs Time",
+                roi_output_path(output_dirs, "temporally_regularized_velocity_vs_time.png")
+            )
         plot_profile_fit_rmse(
             times_plot,
             profile_fit_rmse_reg,

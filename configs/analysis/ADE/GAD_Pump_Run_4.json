@@ -1,11 +1,11 @@
 {
-  "config_name": "GAD_Pump_Run_2",
-  "description": "GAD pump-on pressure dataset using Darcy convection, ROI 'GAD_Darcy_Fixed_V', and the GAD 135 kVp calibration.",
-  "to_run_powershell": "& '.\\.venv\\Scripts\\python.exe' Data_Analysis\\Analysis_Main_Config_First.py --config configs\\analysis\\ADE\\GAD_Pump_Run_2.json",
-  "notes": "Finalized and accpeted results for the GAD pump-on dataset. Weakest fit of the entire GAD set. This analysis uses Darcy convection with a fixed velocity, and the GAD 135 kVp calibration. The ROI is manually selected to capture the pump region, and the first timepoint is not used as a baseline since it already contains contrast. The local-map fit threshold is set higher to focus on the core region with stronger signal, and temporal smoothing is disabled to allow for more dynamic variation in the velocity estimate.",
+  "config_name": "GAD_Pump_Run_4",
+  "description": "GAD pump-on pressure dataset using Darcy convection with interactive ROI selection and the GAD 135 kVp calibration.",
+  "to_run_powershell": "& '.\\.venv\\Scripts\\python.exe' Data_Analysis\\Analysis_Main_Config_First.py --config configs\\analysis\\ADE\\GAD_Pump_Run_4.json",
+  "notes": "Finalized and accpeted results for the GAD pump-on dataset. This analysis uses Darcy convection with a fixed velocity, and the GAD 135 kVp calibration. The ROI is manually selected to capture the pump region, and the first timepoint is not used as a baseline since it already contains contrast. The local-map fit threshold is set higher to focus on the core region with stronger signal, and temporal smoothing is disabled to allow for more dynamic variation in the velocity estimate.",
   "settings": {
-    "dicom_folder": "D:\\DICOMS\\ADE\\VIS13_GAD4_1_5.5P",
-    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fixed_V\\GAD_Pump_Run_2",
+    "dicom_folder": "D:\\DICOMS\\ADE\\GAD_1_5.5P_2",
+    "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fixed_V\\GAD_Pump_Run_4",
     "pump_on": true,
     "fit_velocity": false,
     "convection_method": "darcy",
@@ -32,11 +32,11 @@
     "manual_named_rois": [
       [
         "GAD_PUMP",
-        [100, 119, 294, 330]
+        [145, 164, 277, 313]
       ]
     ],
     "save_selected_rois_json": true,
-    "skip_initial_frames": 2,
+    "skip_initial_frames": 1,
     "apply_spatial_smoothing": false,
     "spatial_smooth_sigma": 0.8,
     "apply_temporal_smoothing": false,

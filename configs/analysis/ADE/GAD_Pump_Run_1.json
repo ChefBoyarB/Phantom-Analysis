@@ -1,7 +1,8 @@
 {
   "config_name": "GAD_Pump_Run_1",
-  "description": "GAD pump-on pressure dataset using Darcy convection, ROI 'GAD_Darcy_Fixed_V', and the GAD 135 kVp calibration.",
-  "notes": "This is the config-first version of the validated GAD pressure workflow. Before reusing it for a new run, change at least output_folder and any dataset-specific paths or ROI values that need to differ.",
+  "description": "GAD pump-on pressure dataset using Darcy convection with manual ROI selection, Velocity is fixed and the GAD 135 kVp calibration.",
+  "to_run_powershell": "& '.\\.venv\\Scripts\\python.exe' Data_Analysis\\Analysis_Main_Config_First.py --config configs\\analysis\\ADE\\GAD_Pump_Run_1.json",
+  "notes": "Finalized and accpeted results for the GAD pump-on dataset. This analysis uses Darcy convection with a fixed velocity, and the GAD 135 kVp calibration. The ROI is manually selected to capture the pump region, and the first timepoint is not used as a baseline since it already contains contrast. The local-map fit threshold is set higher to focus on the core region with stronger signal, and temporal smoothing is disabled to allow for more dynamic variation in the velocity estimate.",
   "settings": {
     "dicom_folder": "D:\\DICOMS\\ADE\\VIS16_GAD7_1_5.5P",
     "output_folder": "C:\\Users\\brend\\OneDrive - University of Toronto\\Paper_1_Results\\ADE_Results\\Fixed_V\\GAD_Pump_Run_1",
@@ -23,7 +24,7 @@
     "uncertainty_random_seed": 42,
     "flow_rate_ml_min": 0.0,
     "effective_area_mm2": 75.0,
-    "permeability_mm2": 3.7e-09,
+    "permeability_mm2": 3.18e-10,
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -25.24,
     "depth_axis": "rows",
@@ -63,7 +64,7 @@
     "derived_effective_curvature_eps": 1e-06,
     "enable_global_spatiotemporal_fit": true,
     "global_cs_num_control_points": 6,
-    "global_fit_include_velocity": true,
+    "global_fit_include_velocity": false,
     "global_fit_max_nfev": 50000,
     "enable_temporally_regularized_fit": true,
     "regularized_fit_max_nfev": 50000,
