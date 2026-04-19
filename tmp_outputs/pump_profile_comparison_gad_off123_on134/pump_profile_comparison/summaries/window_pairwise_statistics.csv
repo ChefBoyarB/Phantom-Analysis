@@ -1,0 +1,3 @@
+window_name,window_min_time_min,window_max_time_min,metric_name,metric_label,condition_a,condition_a_label,condition_b,condition_b_label,n_a,n_b,mean_a,mean_b,mean_diff_a_minus_b,statistic,p_value,alpha,significant,note
+post_5min,5.0,,center_of_mass_depth,Center-of-Mass Depth,pump_off,Pump off,pump_on,Pump on,3,3,0.25096897395690115,0.2397978105163224,0.011171163440578752,0.9779381580439216,0.3837115074928951,0.05,False,
+post_5min,5.0,,deep_tail_fraction,Deep-Tail Fraction,pump_off,Pump off,pump_on,Pump on,3,3,0.060609013466959995,0.05377504970273155,0.006833963764228443,0.507576740101639,0.6384577464646646,0.05,False,

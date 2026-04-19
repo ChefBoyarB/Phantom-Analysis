@@ -1,0 +1,3 @@
+window_name,window_min_time_min,window_max_time_min,metric_name,metric_label,condition_a,condition_a_label,condition_b,condition_b_label,n_a,n_b,mean_a,mean_b,mean_diff_a_minus_b,statistic,p_value,alpha,significant,note
+post_5min,5.0,,center_of_mass_depth,Center-of-Mass Depth,pump_off,Pump off,pump_on,Pump on,1,1,0.18581798019767318,0.15695006093858146,0.028867919259091712,,,0.05,False,Need n>=2 in each condition for Welch t-test.
+post_5min,5.0,,deep_tail_fraction,Deep-Tail Fraction,pump_off,Pump off,pump_on,Pump on,1,1,0.028572874347086226,0.002246614841755543,0.026326259505330685,,,0.05,False,Need n>=2 in each condition for Welch t-test.
