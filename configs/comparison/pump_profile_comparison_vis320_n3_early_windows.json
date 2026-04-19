@@ -1,0 +1,99 @@
+{
+  "description": "Pump-profile comparison config for VIS320 with early and late report windows, intended to test whether pump-on effects are concentrated at early times.",
+  "notes": [
+    "This mirrors the grouped VIS320 pump-off vs pump-on n=3 comparison while expanding the reporting windows.",
+    "The added windows are intended for effect-size reporting, especially at early times where the VIS data may show the strongest directional separation.",
+    "The engine also reports penetration depth at 10% peak in addition to center-of-mass depth and deep-tail fraction."
+  ],
+  "out_folder": "../../tmp_outputs/pump_profile_comparison_vis320_n3_early_windows",
+  "figure_title": "Pump Profile Comparison: VIS320 Pump Off vs Pump On (Early Windows)",
+  "tracer_name": "VIS320",
+  "tracer_label": "VIS320",
+  "time_unit_label": "min",
+  "concentration_label": "Concentration (mg/mL)",
+  "use_normalized_depth": true,
+  "common_depth_points": 200,
+  "normalize_each_profile_to_own_peak": true,
+  "min_time_min": 0.0,
+  "shared_time_axis_min": 0.0,
+  "shared_time_axis_max": null,
+  "target_times_min": [
+    0.5,
+    10.0,
+    20.0
+  ],
+  "normalized_map_vmin": 0.0,
+  "normalized_map_vmax": 1.0,
+  "difference_map_abs_limit": 0.3,
+  "deep_region_start": 0.67,
+  "stats_alpha": 0.05,
+  "report_windows": [
+    {
+      "name": "0_to_5min",
+      "min_time_min": 0.0,
+      "max_time_min": 5.0
+    },
+    {
+      "name": "5_to_10min",
+      "min_time_min": 5.0,
+      "max_time_min": 10.0
+    },
+    {
+      "name": "10_to_20min",
+      "min_time_min": 10.0,
+      "max_time_min": 20.0
+    },
+    {
+      "name": "20_to_25min",
+      "min_time_min": 20.0,
+      "max_time_min": 25.0
+    },
+    {
+      "name": "post_5min",
+      "min_time_min": 5.0,
+      "max_time_min": null
+    }
+  ],
+  "conditions": [
+    {
+      "name": "pump_off",
+      "label": "Pump off",
+      "color": "#1f77b4",
+      "marker": "o",
+      "samples": [
+        {
+          "sample_id": "VIS_OFF_01",
+          "analysis_config": "../analysis/diffusion/VIS320_Run_1.json"
+        },
+        {
+          "sample_id": "VIS_OFF_02",
+          "analysis_config": "../analysis/diffusion/VIS320_Run_2.json"
+        },
+        {
+          "sample_id": "VIS_OFF_03",
+          "analysis_config": "../analysis/diffusion/VIS320_Run_3.json"
+        }
+      ]
+    },
+    {
+      "name": "pump_on",
+      "label": "Pump on",
+      "color": "#d95f02",
+      "marker": "s",
+      "samples": [
+        {
+          "sample_id": "VIS_ON_01",
+          "analysis_config": "../analysis/ADE/VIS320_Pump_Run_1.json"
+        },
+        {
+          "sample_id": "VIS_ON_02",
+          "analysis_config": "../analysis/ADE/VIS320_Pump_Run_2.json"
+        },
+        {
+          "sample_id": "VIS_ON_03",
+          "analysis_config": "../analysis/ADE/VIS320_Pump_Run_3.json"
+        }
+      ]
+    }
+  ]
+}

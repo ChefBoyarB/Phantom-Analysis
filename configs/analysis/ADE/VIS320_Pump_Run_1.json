@@ -24,15 +24,18 @@
     "uncertainty_random_seed": 42,
     "flow_rate_ml_min": 0.0,
     "effective_area_mm2": 75.0,
-    "permeability_mm2": 1.5e-09,
+    "permeability_mm2": 3.18e-10,
     "viscosity_pa_s": 0.001,
     "pressure_gradient_pa_mm": -25.24,
     "depth_axis": "rows",
-    "roi_selection_mode": "interactive",
+    "roi_selection_mode": "manual_list",
     "manual_named_rois": [
       [
         "VIS_320_PUMP",
-        [146, 165, 277, 313]
+        [111,
+        131,
+        199,
+        235]
       ]
     ],
     "save_selected_rois_json": true,

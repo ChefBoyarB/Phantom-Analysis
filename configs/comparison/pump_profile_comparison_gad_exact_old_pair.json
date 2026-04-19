@@ -1,0 +1,65 @@
+{
+  "description": "Exact old-pair pump-profile comparison for GAD using the same historical pump-off and pump-on result folders that were hardcoded in the legacy script.",
+  "notes": [
+    "This is intended to isolate sample-selection effects from engine-refactor effects.",
+    "Pump off points to GAD_Swollen_No_Pressure_135kvp with ROI folder GAD.",
+    "Pump on points to GAD_Pressure_Test_Global_Shared_V with ROI folder GAD_Darcy_Fixed_V."
+  ],
+  "out_folder": "../../tmp_outputs/pump_profile_comparison_gad_exact_old_pair",
+  "figure_title": "Pump Profile Comparison: GAD Old Exact Pair",
+  "tracer_name": "GAD",
+  "tracer_label": "GAD",
+  "time_unit_label": "min",
+  "concentration_label": "Concentration (mg/mL)",
+  "use_normalized_depth": true,
+  "common_depth_points": 200,
+  "normalize_each_profile_to_own_peak": true,
+  "min_time_min": 0.0,
+  "shared_time_axis_min": 0.0,
+  "shared_time_axis_max": null,
+  "target_times_min": [
+    0.5,
+    10.0,
+    20.0
+  ],
+  "normalized_map_vmin": 0.0,
+  "normalized_map_vmax": 1.0,
+  "difference_map_abs_limit": 0.3,
+  "deep_region_start": 0.67,
+  "stats_alpha": 0.05,
+  "report_windows": [
+    {
+      "name": "post_5min",
+      "min_time_min": 5.0,
+      "max_time_min": null
+    }
+  ],
+  "conditions": [
+    {
+      "name": "pump_off",
+      "label": "Pump off",
+      "color": "#1f77b4",
+      "marker": "o",
+      "samples": [
+        {
+          "sample_id": "GAD_OFF_OLD_PAIR",
+          "run_path": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/Results/Results_Paper_1/GAD_Swollen_No_Pressure_135kvp",
+          "roi_folder": "GAD"
+        }
+      ]
+    },
+    {
+      "name": "pump_on",
+      "label": "Pump on",
+      "color": "#d95f02",
+      "marker": "s",
+      "samples": [
+        {
+          "sample_id": "GAD_ON_OLD_PAIR",
+          "run_path": "C:/Users/brend/OneDrive - University of Toronto/VS Code Files/Results/Results_Paper_1/GAD_Pressure_Test_Global_Shared_V",
+          "roi_folder": "GAD_Darcy_Fixed_V"
+        }
+      ]
+    }
+  ]
+}

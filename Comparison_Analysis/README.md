@@ -378,6 +378,7 @@ The time-course comparison config follows the same tracer-first structure as the
 - `time_unit_label`
 - `shared_time_axis_min`
 - `shared_time_axis_max`
+- `plot_full_sample_support_only`
 - `metric_ylims`
 - `report_windows`
 - `tracers`
@@ -401,6 +402,8 @@ Each sample can use one of:
 - the completed analysis output folder from `settings.output_folder`
 - `roi_folder` when the analysis run has exactly one selected ROI
 - `roi_prefix` from the time-course CSV when only one ROI prefix is present
+
+`plot_full_sample_support_only` is optional. Set it to `true` when you want the bold tracer mean and uncertainty band to stop at time points where not all samples contribute, which helps avoid end-of-series edge artifacts from slightly staggered final timestamps.
 
 The time-course comparison writes outputs under:
 

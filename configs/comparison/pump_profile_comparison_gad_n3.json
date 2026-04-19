@@ -1,0 +1,79 @@
+{
+  "description": "Pump-profile comparison config for GAD, aggregating multiple pump-off and pump-on runs with the same engine-style workflow as the other comparison tools.",
+  "notes": [
+    "Each condition can include any number of samples through analysis_config, run_path, or run_rel entries.",
+    "This starter config compares three diffusion-only GAD runs against three GAD pump runs.",
+    "You can duplicate or swap sample entries to build larger pump-off vs pump-on comparisons for the same tracer."
+  ],
+  "out_folder": "../../tmp_outputs/pump_profile_comparison_gad_n3",
+  "figure_title": "Pump Profile Comparison: GAD Pump Off vs Pump On",
+  "tracer_name": "GAD",
+  "tracer_label": "GAD",
+  "time_unit_label": "min",
+  "concentration_label": "Concentration (mg/mL)",
+  "use_normalized_depth": true,
+  "common_depth_points": 200,
+  "normalize_each_profile_to_own_peak": true,
+  "min_time_min": 0.0,
+  "shared_time_axis_min": 0.0,
+  "shared_time_axis_max": null,
+  "target_times_min": [
+    0.5,
+    10.0,
+    20.0
+  ],
+  "normalized_map_vmin": 0.0,
+  "normalized_map_vmax": 1.0,
+  "difference_map_abs_limit": 0.3,
+  "deep_region_start": 0.67,
+  "stats_alpha": 0.05,
+  "report_windows": [
+    {
+      "name": "post_5min",
+      "min_time_min": 5.0,
+      "max_time_min": null
+    }
+  ],
+  "conditions": [
+    {
+      "name": "pump_off",
+      "label": "Pump off",
+      "color": "#1f77b4",
+      "marker": "o",
+      "samples": [
+        {
+          "sample_id": "GAD_OFF_01",
+          "analysis_config": "../analysis/diffusion/GAD_Run_1.json"
+        },
+        {
+          "sample_id": "GAD_OFF_02",
+          "analysis_config": "../analysis/diffusion/GAD_Run_2.json"
+        },
+        {
+          "sample_id": "GAD_OFF_03",
+          "analysis_config": "../analysis/diffusion/GAD_Run_3.json"
+        }
+      ]
+    },
+    {
+      "name": "pump_on",
+      "label": "Pump on",
+      "color": "#d95f02",
+      "marker": "s",
+      "samples": [
+        {
+          "sample_id": "GAD_ON_01",
+          "analysis_config": "../analysis/ADE/GAD_Pump_Run_1.json"
+        },
+        {
+          "sample_id": "GAD_ON_04",
+          "analysis_config": "../analysis/ADE/GAD_Pump_Run_4.json"
+        },
+        {
+          "sample_id": "GAD_ON_03",
+          "analysis_config": "../analysis/ADE/GAD_Pump_Run_3.json"
+        }
+      ]
+    }
+  ]
+}

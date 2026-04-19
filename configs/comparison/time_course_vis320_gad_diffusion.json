@@ -1,0 +1,83 @@
+{
+  "description": "Time-course comparison config for the accepted VIS320 and GAD diffusion-only runs, using analysis-config paths so the comparison script can resolve each completed sample output folder automatically.",
+  "notes": [
+    "This is a diffusion-run time-course comparison config for the accepted VIS320 and GAD n=3 datasets.",
+    "Each sample points to its config under configs/analysis/diffusion so the script can infer the completed output folder and ROI folder.",
+    "Tracer-level plots are built from all included samples, with thin sample traces and bold tracer means.",
+    "Bold tracer means and uncertainty bands are only drawn where all samples contribute, which avoids edge artifacts from slightly staggered final time points.",
+    "Outputs are written under tmp_outputs/time_course_vis320_gad_diffusion/time_course_comparisons."
+  ],
+  "out_folder": "../../tmp_outputs/time_course_vis320_gad_diffusion",
+  "figure_title": "Time Course Comparison: VIS 320 vs GAD Diffusion Runs",
+  "time_unit_label": "min",
+  "shared_time_axis_min": 0.0,
+  "shared_time_axis_max": null,
+  "plot_full_sample_support_only": true,
+  "metric_ylims": {
+    "effective_diffusivity": [
+      0.0,
+      0.035
+    ],
+    "effective_diffusivity_zoomed": [
+      0.0,
+      0.005
+    ],
+    "fitted_Cs": [
+      15.0,
+      70.0
+    ],
+    "profile_fit_r2": [
+      0.0,
+      1.01
+    ]
+  },
+  "report_windows": [
+    {
+      "name": "post_5min",
+      "min_time_min": 5.0,
+      "max_time_min": null
+    }
+  ],
+  "tracers": [
+    {
+      "name": "VIS320",
+      "label": "VIS 320",
+      "color": "#1f77b4",
+      "marker": "o",
+      "samples": [
+        {
+          "sample_id": "VIS320_01",
+          "analysis_config": "../analysis/diffusion/VIS320_Run_1.json"
+        },
+        {
+          "sample_id": "VIS320_02",
+          "analysis_config": "../analysis/diffusion/VIS320_Run_2.json"
+        },
+        {
+          "sample_id": "VIS320_03",
+          "analysis_config": "../analysis/diffusion/VIS320_Run_3.json"
+        }
+      ]
+    },
+    {
+      "name": "GAD",
+      "label": "GAD",
+      "color": "#d95f02",
+      "marker": "s",
+      "samples": [
+        {
+          "sample_id": "GAD_01",
+          "analysis_config": "../analysis/diffusion/GAD_Run_1.json"
+        },
+        {
+          "sample_id": "GAD_02",
+          "analysis_config": "../analysis/diffusion/GAD_Run_2.json"
+        },
+        {
+          "sample_id": "GAD_03",
+          "analysis_config": "../analysis/diffusion/GAD_Run_3.json"
+        }
+      ]
+    }
+  ]
+}

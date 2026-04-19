@@ -1,4 +1,15 @@
+# Support both "python Comparison_Analysis/..." and package imports from repo root.
+try:
+    from .Pump_Profile_Comparison_Figure_Generator_Engine import main
+except ImportError:
+    from Pump_Profile_Comparison_Figure_Generator_Engine import main
 
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+r'''
 import os
 import glob
 import zipfile
@@ -526,3 +537,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''

@@ -773,6 +773,7 @@ def validate_and_resolve_config(config: Dict[str, Any], config_path: Path) -> Di
     resolved["shared_time_axis_max"] = (
         float(config["shared_time_axis_max"]) if config.get("shared_time_axis_max") is not None else None
     )
+    resolved["plot_full_sample_support_only"] = bool(config.get("plot_full_sample_support_only", False))
     resolved["report_windows"] = config.get("report_windows", DEFAULT_REPORT_WINDOWS)
 
     metric_ylims = dict(DEFAULT_METRIC_YLIMS)
@@ -1085,7 +1086,7 @@ def aggregate_tracer_metric(
     )
 
 
-def build_uncertainty_note(mode: str) -> str:
+def build_uncertainty_note(mode: str, plot_full_sample_support_only: bool = False) -> str:
     notes = {
         "combined_95ci": "Band shows the average within-sample combined 95% interval.",
         "combined_1sd": "Band shows the average within-sample combined 1 SD envelope.",
@@ -1093,7 +1094,10 @@ def build_uncertainty_note(mode: str) -> str:
         "fixed_roi_1sd": "Band shows the average within-sample fixed-ROI 1 SD envelope.",
         "none": "Bold lines show tracer means; thin lines show the contributing samples.",
     }
-    return notes[mode]
+    note = notes[mode]
+    if plot_full_sample_support_only:
+        note += " Bold means and bands are only shown where all samples contribute."
+    return note
 
 
 def resolve_aggregated_band(
@@ -1109,6 +1113,16 @@ def resolve_aggregated_band(
     if mode == "fixed_roi_1sd" and aggregate.fixed_std_mean is not None:
         return aggregate.center_mean - aggregate.fixed_std_mean, aggregate.center_mean + aggregate.fixed_std_mean
     return None, None
+
+
+def build_plot_support_mask(
+    aggregate: AggregatedMetricData,
+    plot_full_sample_support_only: bool,
+) -> np.ndarray:
+    mask = np.isfinite(aggregate.time) & np.isfinite(aggregate.center_mean)
+    if plot_full_sample_support_only:
+        mask &= aggregate.center_sample_count >= aggregate.sample_count_total
+    return mask
 
 
 def output_root(out_folder: str) -> Path:
@@ -1137,19 +1151,25 @@ def save_timecourse_plot(
     figure_title: str,
     time_unit_label: str,
     metric_ylims: Dict[str, List[float]],
+    plot_full_sample_support_only: bool,
 ) -> Optional[str]:
     metric_key = plot_spec["metric_key"]
     plotted_any = False
     fig, ax = plt.subplots(figsize=(10, 6))
+    xmins: List[float] = []
+    xmaxs: List[float] = []
 
     for tracer_name in tracer_order:
         aggregate = aggregated_by_tracer.get(tracer_name, {}).get(metric_key)
         if aggregate is None:
             continue
-        plotted_any = True
         style = tracer_styles[tracer_name]
 
         for sample_curve in aggregate.sample_curves:
+            sample_valid = np.isfinite(aggregate.time) & np.isfinite(sample_curve["values"])
+            if np.any(sample_valid):
+                xmins.append(float(np.min(aggregate.time[sample_valid])))
+                xmaxs.append(float(np.max(aggregate.time[sample_valid])))
             ax.plot(
                 aggregate.time,
                 sample_curve["values"],
@@ -1158,9 +1178,17 @@ def save_timecourse_plot(
                 alpha=SAMPLE_LINE_ALPHA,
             )
 
+        plot_mask = build_plot_support_mask(aggregate, plot_full_sample_support_only)
+        if not np.any(plot_mask):
+            continue
+
+        plotted_any = True
+        xmins.append(float(np.min(aggregate.time[plot_mask])))
+        xmaxs.append(float(np.max(aggregate.time[plot_mask])))
+
         band_low, band_high = resolve_aggregated_band(aggregate, mode)
         if band_low is not None and band_high is not None:
-            valid = np.isfinite(aggregate.time) & np.isfinite(band_low) & np.isfinite(band_high)
+            valid = plot_mask & np.isfinite(band_low) & np.isfinite(band_high)
             if np.any(valid):
                 ax.fill_between(
                     aggregate.time[valid],
@@ -1172,12 +1200,12 @@ def save_timecourse_plot(
 
         ax.plot(
             aggregate.time,
-            aggregate.center_mean,
+            np.where(plot_mask, aggregate.center_mean, np.nan),
             color=style["color"],
             linewidth=CENTER_LINEWIDTH,
             marker=style["marker"],
             markersize=LINE_MARKER_SIZE,
-            markevery=max(1, len(aggregate.time) // 10),
+            markevery=max(1, int(np.count_nonzero(plot_mask)) // 10),
             label=f"{tracer_labels[tracer_name]} mean (n={aggregate.sample_count_total})",
         )
 
@@ -1187,7 +1215,7 @@ def save_timecourse_plot(
 
     ax.set_xlabel(f"Time ({time_unit_label})")
     ax.set_ylabel(METRIC_SPEC_BY_KEY[metric_key]["label"])
-    ax.set_title(f"{plot_spec['title']}\n{build_uncertainty_note(mode)}")
+    ax.set_title(f"{plot_spec['title']}\n{build_uncertainty_note(mode, plot_full_sample_support_only)}")
     ax.grid(True, alpha=0.3)
     ax.legend()
 
@@ -1195,12 +1223,8 @@ def save_timecourse_plot(
         ymin, ymax = metric_ylims[plot_spec["ylim_key"]]
         ax.set_ylim(ymin, ymax)
 
-    first_aggregate = next(
-        aggregate
-        for tracer_name in tracer_order
-        if (aggregate := aggregated_by_tracer.get(tracer_name, {}).get(metric_key)) is not None
-    )
-    ax.set_xlim(float(first_aggregate.time[0]), float(first_aggregate.time[-1]))
+    if xmins and xmaxs:
+        ax.set_xlim(min(xmins), max(xmaxs))
     fig.suptitle(figure_title, fontsize=14)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     return save_plot(fig, out_folder, subfolder, out_name)
@@ -1507,6 +1531,7 @@ def main() -> int:
                 figure_title=config["figure_title"],
                 time_unit_label=config["time_unit_label"],
                 metric_ylims=config["metric_ylims"],
+                plot_full_sample_support_only=config["plot_full_sample_support_only"],
             )
             if out_path is not None:
                 mode_outputs.append(out_path)
@@ -1527,6 +1552,7 @@ def main() -> int:
             figure_title=config["figure_title"],
             time_unit_label=config["time_unit_label"],
             metric_ylims=config["metric_ylims"],
+            plot_full_sample_support_only=config["plot_full_sample_support_only"],
         )
         if out_path is not None:
             diagnostic_outputs.append(out_path)
@@ -1556,6 +1582,7 @@ def main() -> int:
         "shared_time_axis_min_used": float(time_grid[0]),
         "shared_time_axis_max_used": float(time_grid[-1]),
         "common_time_grid_points": int(len(time_grid)),
+        "plot_full_sample_support_only": config["plot_full_sample_support_only"],
         "metric_ylims": config["metric_ylims"],
         "report_windows": config["report_windows"],
         "uncertainty_definitions": UNCERTAINTY_DEFINITIONS,
